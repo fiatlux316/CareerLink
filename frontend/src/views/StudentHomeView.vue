@@ -393,19 +393,19 @@ const handleViewDetails = (id: string) => {
 .consultation-types {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .consultation-type-item {
   position: relative;
-  padding: 1rem;
+  padding: 0.45rem 0.875rem;
   border: 2px solid var(--border);
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
   background: var(--surface-strong);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .consultation-type-item:hover {
@@ -420,11 +420,11 @@ const handleViewDetails = (id: string) => {
 }
 
 .consultation-type-input {
-  margin: 0.25rem 0 0 0;
+  margin: 0.15rem 0 0 0;
   cursor: pointer;
-  min-width: 1.25rem;
-  width: 1.25rem;
-  height: 1.25rem;
+  min-width: 1.125rem;
+  width: 1.125rem;
+  height: 1.125rem;
   accent-color: var(--primary);
 }
 
@@ -439,14 +439,14 @@ const handleViewDetails = (id: string) => {
 }
 
 .consultation-type-description {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
   font-size: 0.8125rem;
   color: #475569;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .selected-type-info {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background: var(--primary-soft);
   color: var(--primary);
@@ -455,14 +455,14 @@ const handleViewDetails = (id: string) => {
 
 /* 버튼 */
 .btn {
-  padding: 0.875rem 1rem;
+  padding: 0.45rem 1rem;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: 0.625rem;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -480,8 +480,8 @@ const handleViewDetails = (id: string) => {
 
 .btn-primary:not(:disabled):hover {
   background: #1e40af;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(29, 78, 216, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
 .btn-secondary {
@@ -518,7 +518,7 @@ const handleViewDetails = (id: string) => {
 .home-view__actions {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 /* 반응형 */
@@ -530,20 +530,20 @@ const handleViewDetails = (id: string) => {
   }
 
   .home-view__form {
-    gap: 2rem;
+    gap: 1.5rem;
   }
 
   .consultation-types {
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .consultation-type-item {
-    padding: 1.25rem;
+    padding: 0.6rem 1rem;
   }
 
   .home-view__actions {
-    gap: 1rem;
-    margin-top: 1rem;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
   }
 }
 </style>

@@ -449,7 +449,7 @@ const hasNoConsultation = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   gap: 1rem;
 }
 
@@ -481,15 +481,15 @@ const hasNoConsultation = computed(() => {
 
 /* 진행 상태 바 */
 .progress-section {
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .progress-bar {
-  height: 0.5rem;
+  height: 0.4rem;
   border-radius: 9999px;
   background: var(--border);
   overflow: hidden;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .progress-bar__fill {
@@ -501,7 +501,7 @@ const hasNoConsultation = computed(() => {
 .progress-steps {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .progress-step {
@@ -511,11 +511,11 @@ const hasNoConsultation = computed(() => {
 
 .progress-step__label {
   display: inline-block;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
   background: var(--border);
   color: #94a3b8;
-  font-size: 0.8125rem;
+  font-size: 0.775rem;
   font-weight: 600;
   transition: all 0.2s ease;
 }
@@ -529,23 +529,23 @@ const hasNoConsultation = computed(() => {
 .info-section {
   background: var(--surface-strong);
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.625rem;
+  margin-bottom: 0.5rem;
 }
 
 .info-section__title {
-  margin: 0 0 1.25rem;
-  font-size: 1.125rem;
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
   color: #0f172a;
 }
 
 .info-item {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 1rem;
+  gap: 0.5rem;
   align-items: center;
-  padding: 0.75rem 0;
+  padding: 0.15rem 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -555,14 +555,15 @@ const hasNoConsultation = computed(() => {
 
 .info-item__label {
   color: #475569;
-  font-size: 0.875rem;
+  font-size: 0.9125rem;
   font-weight: 500;
-  min-width: 5rem;
+  min-width: 4.5rem;
 }
 
 .info-item__value {
   color: #0f172a;
   font-weight: 600;
+  font-size: 0.975rem;
   word-break: break-word;
 }
 
@@ -631,42 +632,54 @@ const hasNoConsultation = computed(() => {
 
 /* 완료 메시지 */
 .completion-message {
-  text-align: center;
-  padding: 2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
   background: rgba(34, 197, 94, 0.1);
-  border-radius: 1rem;
+  border-radius: 0.625rem;
   color: #166534;
+  margin-bottom: 1rem;
 }
 
 .completion-icon {
-  display: block;
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  display: inline-block;
+  font-size: 1.125rem;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .completion-message p {
   margin: 0;
   font-weight: 600;
+  font-size: 0.9375rem;
 }
 
 /* 취소 메시지 */
 .cancelled-message {
-  text-align: center;
-  padding: 2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
   background: rgba(107, 114, 128, 0.1);
-  border-radius: 1rem;
+  border-radius: 0.625rem;
   color: #374151;
+  margin-bottom: 1rem;
 }
 
 .cancelled-icon {
-  display: block;
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  display: inline-block;
+  font-size: 1.125rem;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .cancelled-message p {
   margin: 0;
   font-weight: 600;
+  font-size: 0.9375rem;
 }
 
 /* 단추 및 목록 버튼 */

@@ -215,17 +215,14 @@ onUnmounted(() => {
             class="consultation-item"
             @click="handleConsultationClick(consultation.id)"
           >
-            <div class="consultation-item__header">
-              <div class="consultation-item__info">
-                <div class="consultation-item__type">{{ consultation.typeName }}</div>
-                <div class="consultation-item__date">{{ formatDate(consultation.createdAt) }}</div>
-              </div>
-              <div :class="['badge', getStatusColorClass(consultation.status)]">
-                {{ getStatusLabel(consultation.status) }}
-              </div>
+            <div class="consultation-item__main">
+              <span class="consultation-item__type">{{ consultation.typeName }}</span>
+              <span class="consultation-item__date">{{ formatDate(consultation.createdAt) }}</span>
             </div>
-            <div class="consultation-item__footer">
-              <span class="consultation-item__name">{{ consultation.studentName }}</span>
+            <div class="consultation-item__meta">
+              <span :class="['badge', getStatusColorClass(consultation.status)]">
+                {{ getStatusLabel(consultation.status) }}
+              </span>
               <span class="consultation-item__arrow">→</span>
             </div>
           </button>
@@ -338,20 +335,22 @@ onUnmounted(() => {
 .consultations-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 .consultation-item {
-  padding: 1.25rem;
+  padding: 0.2rem 0.625rem;
   border: 1px solid var(--border);
-  border-radius: 0.875rem;
+  border-radius: 0.375rem;
   background: var(--surface-strong);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   text-align: left;
   font-size: 1rem;
 }
@@ -359,51 +358,45 @@ onUnmounted(() => {
 .consultation-item:hover {
   border-color: var(--primary);
   background: var(--primary-soft);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.12);
 }
 
 .consultation-item:active {
   transform: translateY(0);
 }
 
-.consultation-item__header {
+.consultation-item__main {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.consultation-item__info {
+  align-items: center;
+  gap: 0.75rem;
   flex: 1;
+  min-width: 0;
 }
 
 .consultation-item__type {
   font-weight: 600;
   color: #0f172a;
-  margin-bottom: 0.25rem;
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 .consultation-item__date {
-  font-size: 0.8125rem;
-  color: #475569;
+  font-size: 0.875rem;
+  color: #64748b;
+  white-space: nowrap;
 }
 
-.consultation-item__footer {
+.consultation-item__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.consultation-item__name {
-  font-size: 0.9375rem;
-  color: #475569;
+  gap: 0.625rem;
 }
 
 .consultation-item__arrow {
   color: var(--primary);
   font-weight: 600;
+  font-size: 1rem;
 }
 
 /* 배지 색상 */

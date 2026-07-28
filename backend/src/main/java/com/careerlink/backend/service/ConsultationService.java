@@ -58,6 +58,13 @@ public class ConsultationService {
 			.toList();
 	}
 
+	public List<Consultation> getAllConsultations() {
+		return consultationRepository.findAllByOrderByCreatedAtDesc()
+			.stream()
+			.map(this::initializeConsultation)
+			.toList();
+	}
+
 	@Transactional
 	public Consultation accept(Long consultationId, String counselorName) {
 		Consultation consultation = getConsultation(consultationId);

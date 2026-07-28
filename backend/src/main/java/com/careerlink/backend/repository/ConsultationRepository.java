@@ -23,4 +23,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
 	List<Consultation> findByStudentPhoneOrderByCreatedAtDesc(String studentPhone);
 
 	List<Consultation> findByStatusOrderByCreatedAtAsc(ConsultationStatus status);
+
+	List<Consultation> findAllByOrderByCreatedAtDesc();
 }

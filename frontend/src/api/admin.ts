@@ -1,11 +1,19 @@
 import client from './client'
-import type { ConsultationType } from '../types/consultation'
+import type { ConsultationType, Consultation } from '../types/consultation'
 
 /**
  * 상담 유형 목록 조회
  */
 export const getAdminTypes = async (): Promise<ConsultationType[]> => {
   const response = await client.get<ConsultationType[]>('/admin/types')
+  return response.data
+}
+
+/**
+ * 전체 상담 내역 목록 조회 (관리자용)
+ */
+export const getAllConsultationsForAdmin = async (): Promise<Consultation[]> => {
+  const response = await client.get<Consultation[]>('/admin/consultations')
   return response.data
 }
 

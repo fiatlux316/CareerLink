@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-
-const route = useRoute()
-
-const navigationItems = [
-  { to: '/receive', label: '학생 접수' },
-  { to: '/status/sample', label: '상담 현황' },
-  { to: '/counselor', label: '상담사' },
-  { to: '/admin', label: '관리자' },
-]
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
