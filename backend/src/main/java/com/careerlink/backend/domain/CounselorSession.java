@@ -24,7 +24,7 @@ public class CounselorSession {
 	@Column(nullable = false)
 	private String counselorName;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private String counselorPhone;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

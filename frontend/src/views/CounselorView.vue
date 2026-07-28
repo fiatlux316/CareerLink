@@ -48,10 +48,8 @@ const validateForm = (): boolean => {
     isValid = false
   }
 
-  if (!formData.value.counselorPhone.trim()) {
-    fieldErrors.value.counselorPhone = '휴대폰 번호를 입력해주세요'
-    isValid = false
-  } else if (!validatePhoneNumber(formData.value.counselorPhone)) {
+  const phoneTrimmed = formData.value.counselorPhone.trim()
+  if (phoneTrimmed && !validatePhoneNumber(phoneTrimmed)) {
     fieldErrors.value.counselorPhone = '휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)'
     isValid = false
   }
@@ -402,18 +400,21 @@ const isRefreshDisabled = computed(() => {
 
           <!-- 휴대폰 번호 입력 -->
           <div class="form-group">
-            <label for="counselorPhone" class="form-label">휴대폰 번호</label>
+            <label for="counselorPhone" class="form-label">
+              휴대폰 번호 <span class="form-label__optional">(선택)</span>
+            </label>
             <input
               id="counselorPhone"
               :value="formData.counselorPhone"
               type="tel"
               class="form-input"
               :class="{ error: fieldErrors.counselorPhone }"
-              placeholder="010-1234-5678"
+              placeholder="010-1234-5678 (선택 입력)"
               autocomplete="tel"
               :disabled="isSubmitting"
               @input="handlePhoneInput"
             />
+            <p class="form-help">휴대폰 번호는 선택사항입니다.</p>
             <div v-if="fieldErrors.counselorPhone" class="form-error">
               {{ fieldErrors.counselorPhone }}
             </div>
@@ -657,6 +658,19 @@ const isRefreshDisabled = computed(() => {
   font-weight: 600;
   font-size: 0.9375rem;
   color: #0f172a;
+}
+
+.form-label__optional {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+.form-help {
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  color: #64748b;
 }
 
 .form-input {
