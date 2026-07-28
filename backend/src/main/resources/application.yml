@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: careerlink-backend
+  profiles:
+    default: local
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8080
+
+careerlink:
+  privacy:
+    retention-days: 30
+    masking-cron: "0 0 3 * * *"

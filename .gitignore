@@ -1,0 +1,20 @@
+# macOS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+
+# backend
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+
+# runtime artifacts
+backend/data/
+*.log
