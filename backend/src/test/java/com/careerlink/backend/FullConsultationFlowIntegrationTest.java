@@ -122,8 +122,12 @@ class FullConsultationFlowIntegrationTest {
 					}
 					"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.status", is("IN_PROGRESS")))
+			.andExpect(jsonPath("$.status", is("ACCEPTED")))
 			.andExpect(jsonPath("$.counselorName", is("상담사동일유형")));
+
+		mockMvc.perform(patch(consultationPath + "/start-progress"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status", is("IN_PROGRESS")));
 
 		mockMvc.perform(get(consultationPath))
 			.andExpect(status().isOk())

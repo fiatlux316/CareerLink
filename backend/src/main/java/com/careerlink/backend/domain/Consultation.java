@@ -115,8 +115,13 @@ public class Consultation {
 	}
 
 	public void accept(String counselorName) {
-		validateTransition(ConsultationStatus.IN_PROGRESS);
+		validateTransition(ConsultationStatus.ACCEPTED);
 		this.counselorName = counselorName;
+		this.status = ConsultationStatus.ACCEPTED;
+	}
+
+	public void startProgress() {
+		validateTransition(ConsultationStatus.IN_PROGRESS);
 		this.status = ConsultationStatus.IN_PROGRESS;
 	}
 
@@ -142,11 +147,12 @@ public class Consultation {
 
 	private void validateTransition(ConsultationStatus targetStatus) {
 		boolean allowed = switch (status) {
-			case RECEIVED -> targetStatus == ConsultationStatus.IN_PROGRESS
+			case RECEIVED -> targetStatus == ConsultationStatus.ACCEPTED
 				|| targetStatus == ConsultationStatus.CANCELLED;
-			case CANCELLED -> false;
+			case ACCEPTED -> targetStatus == ConsultationStatus.IN_PROGRESS;
 			case IN_PROGRESS -> targetStatus == ConsultationStatus.COMPLETED;
 			case COMPLETED -> false;
+			case CANCELLED -> false;
 		};
 
 		if (!allowed) {

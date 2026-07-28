@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConsultationsByStudentPhone } from '../api/consultation'
 import type { Consultation } from '../types/consultation'
@@ -9,13 +9,16 @@ const router = useRouter()
 // 상태 관리
 const consultations = ref<Consultation[]>([])
 const isLoading = ref(true)
+const isRefreshing = ref(false)
 const errorMessage = ref('')
 const studentPhone = ref('')
+let pollingIntervalId: number | null = null
 
 // 상태 한글 레이블
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
     RECEIVED: '접수완료',
+    ACCEPTED: '수락완료',
     IN_PROGRESS: '진행중',
     COMPLETED: '상담완료',
     CANCELLED: '취소됨',
@@ -27,6 +30,7 @@ const getStatusLabel = (status: string): string => {
 const getStatusColorClass = (status: string): string => {
   const colors: Record<string, string> = {
     RECEIVED: 'badge-received',
+    ACCEPTED: 'badge-accepted',
     IN_PROGRESS: 'badge-in-progress',
     COMPLETED: 'badge-completed',
     CANCELLED: 'badge-cancelled',
@@ -49,9 +53,11 @@ const formatDate = (dateString: string): string => {
   }
 }
 
-// 상담 목록 조회
-const fetchConsultations = async (phone: string) => {
-  isLoading.value = true
+// 상담 목록 조회 (isSilent가 true이면 로딩 스피너 노출 없이 새로고침)
+const fetchConsultations = async (phone: string, isSilent = false) => {
+  if (!isSilent) {
+    isLoading.value = true
+  }
   errorMessage.value = ''
 
   try {
@@ -64,7 +70,35 @@ const fetchConsultations = async (phone: string) => {
       errorMessage.value = '상담 목록을 조회할 수 없습니다. 잠시 후 다시 시도해주세요'
     }
   } finally {
-    isLoading.value = false
+    if (!isSilent) {
+      isLoading.value = false
+    }
+  }
+}
+
+// 수동 새로고침
+const handleManualRefresh = async () => {
+  if (!studentPhone.value || isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await fetchConsultations(studentPhone.value, true)
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+// 5초 주기 폴링 시작
+const startPolling = (phone: string) => {
+  pollingIntervalId = window.setInterval(() => {
+    fetchConsultations(phone, true)
+  }, 5000)
+}
+
+// 폴링 중단
+const stopPolling = () => {
+  if (pollingIntervalId !== null) {
+    clearInterval(pollingIntervalId)
+    pollingIntervalId = null
   }
 }
 
@@ -73,7 +107,7 @@ const handleConsultationClick = (consultationId: string) => {
   router.push(`/status/${consultationId}`)
 }
 
-// 새로 접댈하기 버튼 클릭
+// 새로 접수하기 버튼 클릭
 const handleNewConsultation = () => {
   const savedName = localStorage.getItem('careerlink_student_name')
   const savedPhone = localStorage.getItem('careerlink_student_phone')
@@ -99,6 +133,12 @@ onMounted(async () => {
 
   studentPhone.value = phone
   await fetchConsultations(phone)
+  startPolling(phone)
+})
+
+// 컴포넌트 언마운트 시 폴링 해제
+onUnmounted(() => {
+  stopPolling()
 })
 </script>
 
@@ -108,7 +148,19 @@ onMounted(async () => {
       <!-- 헤더 -->
       <div class="list-view__header">
         <span class="badge">학생 현황</span>
-        <h1 class="list-view__title">내 상담 목록</h1>
+        <div class="list-view__title-row">
+          <h1 class="list-view__title">내 상담 목록</h1>
+          <button
+            v-if="studentPhone"
+            class="btn btn-small btn-secondary"
+            @click="handleManualRefresh"
+            :disabled="isRefreshing || isLoading"
+            aria-label="상담 목록 새로고침"
+          >
+            <span v-if="!isRefreshing">🔄 새로고침</span>
+            <span v-else>갱신 중...</span>
+          </button>
+        </div>
         <p class="list-view__subtitle">접수하신 상담 목록을 확인하세요</p>
       </div>
 
@@ -201,8 +253,16 @@ onMounted(async () => {
   margin-bottom: 2rem;
 }
 
-.list-view__title {
+.list-view__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin: 0.75rem 0 0.5rem;
+}
+
+.list-view__title {
+  margin: 0;
   font-size: 1.875rem;
   line-height: 1.2;
   color: #0f172a;
@@ -350,6 +410,11 @@ onMounted(async () => {
 .badge-received {
   background: rgba(251, 146, 60, 0.15);
   color: #9a3412;
+}
+
+.badge-accepted {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0369a1;
 }
 
 .badge-in-progress {

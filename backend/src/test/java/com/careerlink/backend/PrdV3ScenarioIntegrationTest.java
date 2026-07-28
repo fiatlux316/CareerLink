@@ -63,7 +63,7 @@ class PrdV3ScenarioIntegrationTest {
 					}
 					"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.status", is("IN_PROGRESS")));
+			.andExpect(jsonPath("$.status", is("ACCEPTED")));
 
 		mockMvc.perform(patch(location + "/cancel"))
 			.andExpect(status().isConflict())
@@ -88,6 +88,10 @@ class PrdV3ScenarioIntegrationTest {
 					  "counselorName": "상담사참조"
 					}
 					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status", is("ACCEPTED")));
+
+		mockMvc.perform(patch(referencedConsultationLocation + "/start-progress"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status", is("IN_PROGRESS")));
 

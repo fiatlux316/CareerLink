@@ -96,6 +96,7 @@ class PrivacyMaskingServiceIntegrationTest {
 	) {
 		Consultation consultation = consultationService.createConsultation(studentName, studentPhone, consultationType.getId());
 		consultationService.accept(consultation.getId(), counselorName);
+		consultationService.startProgress(consultation.getId());
 		return consultationService.complete(consultation.getId());
 	}
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getConsultationTypes } from '../api/consultation'
-import { enterCounselor, getCounselorConsultations, acceptConsultation, completeConsultation } from '../api/counselor'
+import { enterCounselor, getCounselorConsultations, acceptConsultation, startProgressConsultation, completeConsultation } from '../api/counselor'
 import type { ConsultationType, ErrorResponse, Consultation } from '../types/consultation'
 import type { CounselorSessionStorage } from '../types/counselor'
 
@@ -25,6 +25,7 @@ const formData = ref({
 
 // 대시보드 상태 관리
 const receivedConsultations = ref<Consultation[]>([])
+const acceptedConsultations = ref<Consultation[]>([])
 const inProgressConsultations = ref<Consultation[]>([])
 const isLoadingDashboard = ref(false)
 const dashboardErrorMessage = ref('')
@@ -130,23 +131,19 @@ const handleSubmit = async () => {
   }
 }
 
-// 로그아웃 (세션 삭제)
+// 다시 입장하기 (세션 정보 삭제)
 const handleLogout = () => {
   localStorage.removeItem('careerlink_counselor_session')
-  hasEntered.value = false
   counselorSessionInfo.value = null
+  hasEntered.value = false
   receivedConsultations.value = []
+  acceptedConsultations.value = []
   inProgressConsultations.value = []
-  processingItemIds.value.clear()
-  // 폼 초기화
-  formData.value = {
-    counselorName: '',
-    counselorPhone: '',
-    typeId: 0,
+
+  if (pollingInterval !== null) {
+    clearInterval(pollingInterval)
+    pollingInterval = null
   }
-  fieldErrors.value = {}
-  errorMessage.value = ''
-  dashboardErrorMessage.value = ''
 }
 
 // 대시보드 로드
@@ -160,6 +157,10 @@ const loadDashboard = async () => {
     // RECEIVED 상태 조회
     const received = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'RECEIVED')
     receivedConsultations.value = received
+
+    // ACCEPTED 상태 조회
+    const accepted = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'ACCEPTED')
+    acceptedConsultations.value = accepted
 
     // IN_PROGRESS 상태 조회
     const inProgress = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'IN_PROGRESS')
@@ -179,7 +180,7 @@ const loadDashboard = async () => {
   }
 }
 
-// 상담 수락
+// 상담 수락 (RECEIVED -> ACCEPTED)
 const handleAcceptConsultation = async (consultationId: string) => {
   if (!counselorSessionInfo.value) return
 
@@ -207,7 +208,30 @@ const handleAcceptConsultation = async (consultationId: string) => {
   }
 }
 
-// 상담 완료
+// 상담 진행 (ACCEPTED -> IN_PROGRESS)
+const handleStartProgressConsultation = async (consultationId: string) => {
+  if (!counselorSessionInfo.value) return
+
+  processingItemIds.value.add(consultationId)
+
+  try {
+    await startProgressConsultation(consultationId)
+    // 성공 후 목록 재조회
+    await loadDashboard()
+  } catch (error: unknown) {
+    const err = error as any
+    const data = err?.response?.data as ErrorResponse | undefined
+
+    dashboardErrorMessage.value = data?.message || '상담 진행 처리 중 오류가 발생했습니다'
+
+    // 에러 후에도 목록 재조회하여 최신 상태 반영
+    await loadDashboard()
+  } finally {
+    processingItemIds.value.delete(consultationId)
+  }
+}
+
+// 상담 완료 (IN_PROGRESS -> COMPLETED)
 const handleCompleteConsultation = async (consultationId: string) => {
   if (!counselorSessionInfo.value) return
 
@@ -272,11 +296,11 @@ onMounted(async () => {
     isLoadingTypes.value = false
   }
 
-  // 10초 주기로 폴링 시작 (입장 후에만)
+  // 5초 주기로 폴링 시작 (입장 후에만)
   if (hasEntered.value) {
     pollingInterval = setInterval(async () => {
       await loadDashboard()
-    }, 10000)
+    }, 5000)
   }
 })
 
@@ -435,12 +459,12 @@ const isRefreshDisabled = computed(() => {
         </div>
 
         <!-- 대시보드 로딩 -->
-        <div v-if="isLoadingDashboard && receivedConsultations.length === 0 && inProgressConsultations.length === 0" class="counselor-view__loading">
+        <div v-if="isLoadingDashboard && receivedConsultations.length === 0 && acceptedConsultations.length === 0 && inProgressConsultations.length === 0" class="counselor-view__loading">
           <p>접수 목록을 불러오는 중입니다...</p>
         </div>
 
         <!-- 접수 목록 영역 -->
-        <div v-if="!isLoadingDashboard || receivedConsultations.length > 0 || inProgressConsultations.length > 0" class="counselor-dashboard">
+        <div v-if="!isLoadingDashboard || receivedConsultations.length > 0 || acceptedConsultations.length > 0 || inProgressConsultations.length > 0" class="counselor-dashboard">
           <!-- 새로고침 버튼 -->
           <div class="dashboard-header">
             <h2 class="dashboard-title">접수 현황</h2>
@@ -491,6 +515,42 @@ const isRefreshDisabled = computed(() => {
             </div>
           </div>
 
+          <!-- ACCEPTED 섹션 -->
+          <div class="consultation-section">
+            <h3 class="section-title">
+              <span class="section-title__label">수락 완료</span>
+              <span class="section-title__count">{{ acceptedConsultations.length }}</span>
+            </h3>
+
+            <div v-if="acceptedConsultations.length === 0" class="empty-state">
+              <p>수락 완료된 상담이 없습니다</p>
+            </div>
+
+            <div v-else class="consultation-items">
+              <div v-for="consultation in acceptedConsultations" :key="consultation.id" class="consultation-item">
+                <div class="consultation-item__header">
+                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span></div>
+                  <span class="badge badge-accepted">수락완료</span>
+                </div>
+                <div class="consultation-item__meta">
+                  <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
+                </div>
+                <div class="consultation-item__actions">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-small"
+                    @click="handleStartProgressConsultation(consultation.id)"
+                    :disabled="processingItemIds.has(consultation.id)"
+                    :class="{ loading: processingItemIds.has(consultation.id) }"
+                  >
+                    <span v-if="!processingItemIds.has(consultation.id)">상담진행</span>
+                    <span v-else>처리 중...</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- IN_PROGRESS 섹션 -->
           <div class="consultation-section">
             <h3 class="section-title">
@@ -519,7 +579,7 @@ const isRefreshDisabled = computed(() => {
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
-                    <span v-if="!processingItemIds.has(consultation.id)">완료</span>
+                    <span v-if="!processingItemIds.has(consultation.id)">상담완료</span>
                     <span v-else>처리 중...</span>
                   </button>
                 </div>
@@ -957,13 +1017,18 @@ const isRefreshDisabled = computed(() => {
 }
 
 .badge-received {
-  background: rgba(249, 115, 22, 0.1);
-  color: #ea580c;
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-accepted {
+  background-color: #e0f2fe;
+  color: #0369a1;
 }
 
 .badge-in-progress {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 /* 반응형 */

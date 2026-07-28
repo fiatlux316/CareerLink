@@ -39,6 +39,14 @@ export const acceptConsultation = async (
 }
 
 /**
+ * 상담 진행 시작 (ACCEPTED -> IN_PROGRESS)
+ */
+export const startProgressConsultation = async (id: string): Promise<Consultation> => {
+  const response = await client.patch<Consultation>(`/consultations/${id}/start-progress`, {})
+  return response.data
+}
+
+/**
  * 상담 완료
  */
 export const completeConsultation = async (id: string): Promise<Consultation> => {

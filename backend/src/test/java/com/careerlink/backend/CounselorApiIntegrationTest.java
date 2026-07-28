@@ -83,7 +83,7 @@ class CounselorApiIntegrationTest {
 	}
 
 	@Test
-	void acceptConsultationChangesStatusToInProgress() throws Exception {
+	void acceptConsultationChangesStatusToAccepted() throws Exception {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
 		String location = createConsultation("학생4", "01044445555", typeId);
 
@@ -95,7 +95,7 @@ class CounselorApiIntegrationTest {
 					}
 					"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.status", is("IN_PROGRESS")))
+			.andExpect(jsonPath("$.status", is("ACCEPTED")))
 			.andExpect(jsonPath("$.counselorName", is("상담사C")));
 	}
 
@@ -137,6 +137,10 @@ class CounselorApiIntegrationTest {
 					}
 					"""))
 			.andExpect(status().isOk());
+
+		mockMvc.perform(patch(location + "/start-progress"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status", is("IN_PROGRESS")));
 
 		mockMvc.perform(patch(location + "/complete"))
 			.andExpect(status().isOk())

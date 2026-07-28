@@ -31,6 +31,7 @@ const getConsultationId = (): string | null => {
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
     RECEIVED: '접수완료',
+    ACCEPTED: '수락완료',
     IN_PROGRESS: '진행중',
     COMPLETED: '상담완료',
     CANCELLED: '취소됨',
@@ -42,6 +43,7 @@ const getStatusLabel = (status: string): string => {
 const getStatusColorClass = (status: string): string => {
   const colors: Record<string, string> = {
     RECEIVED: 'badge-received',
+    ACCEPTED: 'badge-accepted',
     IN_PROGRESS: 'badge-in-progress',
     COMPLETED: 'badge-completed',
     CANCELLED: 'badge-cancelled',
@@ -52,8 +54,9 @@ const getStatusColorClass = (status: string): string => {
 // 상태 단계 진행도 (0~100%)
 const getStatusProgress = (status: string): number => {
   const progress: Record<string, number> = {
-    RECEIVED: 33,
-    IN_PROGRESS: 66,
+    RECEIVED: 25,
+    ACCEPTED: 50,
+    IN_PROGRESS: 75,
     COMPLETED: 100,
     CANCELLED: 0,
   }
@@ -146,7 +149,7 @@ const handleCancelConsultation = async () => {
     return
   }
 
-  const confirmed = window.confirm('정말로 상담을 취소하시겠습니까?\n\n접수→ 미신청 단계에서만 취소 가능합니다.')
+  const confirmed = window.confirm('정말로 상담을 취소하시겠습니까?\n\n접수→ 수락 전 단계에서만 취소 가능합니다.')
   if (!confirmed) {
     return
   }
@@ -268,6 +271,12 @@ const hasNoConsultation = computed(() => {
           <div class="progress-steps">
             <div class="progress-step" :class="{ active: true }">
               <span class="progress-step__label">접수</span>
+            </div>
+            <div
+              class="progress-step"
+              :class="{ active: ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(consultation.status) }"
+            >
+              <span class="progress-step__label">수락</span>
             </div>
             <div
               class="progress-step"
@@ -446,12 +455,17 @@ const hasNoConsultation = computed(() => {
 
 /* 배지 색상 */
 .badge-received {
-  background: rgba(251, 146, 60, 0.15);
-  color: #9a3412;
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-accepted {
+  background-color: #e0f2fe;
+  color: #0369a1;
 }
 
 .badge-in-progress {
-  background: rgba(59, 130, 246, 0.15);
+  background-color: #dbeafe;
   color: #1e40af;
 }
 

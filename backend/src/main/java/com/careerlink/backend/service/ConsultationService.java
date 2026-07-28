@@ -67,6 +67,14 @@ public class ConsultationService {
 	}
 
 	@Transactional
+	public Consultation startProgress(Long consultationId) {
+		Consultation consultation = getConsultation(consultationId);
+		consultation.startProgress();
+
+		return initializeConsultation(consultationRepository.saveAndFlush(consultation));
+	}
+
+	@Transactional
 	public Consultation complete(Long consultationId) {
 		Consultation consultation = getConsultation(consultationId);
 		consultation.complete();

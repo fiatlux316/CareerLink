@@ -37,7 +37,7 @@ class ConsultationServiceIntegrationTest {
 
 		Consultation acceptedConsultation = consultationService.accept(consultation.getId(), "상담사A");
 
-		assertThat(acceptedConsultation.getStatus()).isEqualTo(ConsultationStatus.IN_PROGRESS);
+		assertThat(acceptedConsultation.getStatus()).isEqualTo(ConsultationStatus.ACCEPTED);
 		assertThat(acceptedConsultation.getCounselorName()).isEqualTo("상담사A");
 		assertThat(acceptedConsultation.getUpdatedAt()).isNotNull();
 	}
@@ -48,6 +48,7 @@ class ConsultationServiceIntegrationTest {
 		Consultation consultation = consultationService.createConsultation("학생2", "01022223333", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사B");
+		consultationService.startProgress(consultation.getId());
 		Consultation completedConsultation = consultationService.complete(consultation.getId());
 
 		assertThat(completedConsultation.getStatus()).isEqualTo(ConsultationStatus.COMPLETED);
@@ -80,16 +81,17 @@ class ConsultationServiceIntegrationTest {
 		Consultation consultation = consultationService.createConsultation("학생4", "01044445555", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사C");
+		consultationService.startProgress(consultation.getId());
 		consultationService.complete(consultation.getId());
 
 		assertThatThrownBy(() -> consultationService.accept(consultation.getId(), "상담사D"))
 			.isInstanceOf(InvalidStatusTransitionException.class)
 			.hasMessageContaining("current=COMPLETED")
-			.hasMessageContaining("target=IN_PROGRESS");
+			.hasMessageContaining("target=ACCEPTED");
 	}
 
 	@Test
-	void inProgressConsultationCannotBeCancelled() {
+	void acceptedConsultationCannotBeCancelled() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
 		Consultation consultation = consultationService.createConsultation("학생취소2", "01034343434", typeId);
 
@@ -97,7 +99,7 @@ class ConsultationServiceIntegrationTest {
 
 		assertThatThrownBy(() -> consultationService.cancel(consultation.getId()))
 			.isInstanceOf(InvalidStatusTransitionException.class)
-			.hasMessageContaining("current=IN_PROGRESS")
+			.hasMessageContaining("current=ACCEPTED")
 			.hasMessageContaining("target=CANCELLED");
 	}
 
@@ -107,6 +109,7 @@ class ConsultationServiceIntegrationTest {
 		Consultation consultation = consultationService.createConsultation("학생취소3", "01056565656", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사완료");
+		consultationService.startProgress(consultation.getId());
 		consultationService.complete(consultation.getId());
 
 		assertThatThrownBy(() -> consultationService.cancel(consultation.getId()))

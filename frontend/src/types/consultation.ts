@@ -25,7 +25,7 @@ export interface Consultation {
   studentPhone: string
   typeId: number
   typeName: string
-  status: 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  status: 'RECEIVED' | 'ACCEPTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   counselorName: string | null
   createdAt: string
   updatedAt: string
