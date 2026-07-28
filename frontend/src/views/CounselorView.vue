@@ -711,19 +711,19 @@ const isRefreshDisabled = computed(() => {
 .consultation-types {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .consultation-type-item {
   position: relative;
-  padding: 1rem;
+  padding: 0.45rem 0.875rem;
   border: 2px solid var(--border);
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
   background: var(--surface-strong);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .consultation-type-item:hover {
@@ -738,11 +738,11 @@ const isRefreshDisabled = computed(() => {
 }
 
 .consultation-type-input {
-  margin: 0.25rem 0 0 0;
+  margin: 0.15rem 0 0 0;
   cursor: pointer;
-  min-width: 1.25rem;
-  width: 1.25rem;
-  height: 1.25rem;
+  min-width: 1.125rem;
+  width: 1.125rem;
+  height: 1.125rem;
   accent-color: var(--primary);
 }
 
@@ -757,14 +757,14 @@ const isRefreshDisabled = computed(() => {
 }
 
 .consultation-type-description {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
   font-size: 0.8125rem;
   color: #475569;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .selected-type-info {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background: var(--primary-soft);
   color: var(--primary);
@@ -773,9 +773,9 @@ const isRefreshDisabled = computed(() => {
 
 /* 입장 정보 */
 .session-info {
-  padding: 1.25rem;
-  margin-bottom: 2rem;
-  border-radius: 0.875rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
   background: var(--primary-soft);
   border: 2px solid var(--primary);
 }
@@ -784,7 +784,7 @@ const isRefreshDisabled = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
 }
 
 .session-info__item:not(:last-child) {
@@ -808,7 +808,7 @@ const isRefreshDisabled = computed(() => {
   margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .dashboard-header {
@@ -829,7 +829,7 @@ const isRefreshDisabled = computed(() => {
 .consultation-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .section-title {
@@ -861,9 +861,9 @@ const isRefreshDisabled = computed(() => {
 }
 
 .empty-state {
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   border: 2px dashed #cbd5e1;
-  border-radius: 0.875rem;
+  border-radius: 0.75rem;
   background: #f8fafc;
   text-align: center;
   color: #94a3b8;
@@ -878,13 +878,13 @@ const isRefreshDisabled = computed(() => {
 .consultation-items {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .consultation-item {
-  padding: 1rem;
+  padding: 0.6rem 0.875rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 0.625rem;
   background: var(--surface-strong);
   transition: all 0.2s ease;
 }
@@ -898,7 +898,7 @@ const isRefreshDisabled = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
   gap: 0.5rem;
 }
 
@@ -930,7 +930,7 @@ const isRefreshDisabled = computed(() => {
 .consultation-item__meta {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
   font-size: 0.8125rem;
   color: #475569;
 }
@@ -941,26 +941,26 @@ const isRefreshDisabled = computed(() => {
 
 .consultation-item__actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 /* 버튼 */
 .btn {
-  padding: 0.875rem 1rem;
+  padding: 0.45rem 1rem;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: 0.625rem;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .btn-small {
-  padding: 0.625rem 0.875rem;
+  padding: 0.3rem 0.625rem;
   font-size: 0.875rem;
   min-height: auto;
 }
@@ -1058,11 +1058,11 @@ const isRefreshDisabled = computed(() => {
   }
 
   .consultation-types {
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .consultation-type-item {
-    padding: 1.25rem;
+    padding: 0.6rem 1rem;
   }
 
   .session-info {
