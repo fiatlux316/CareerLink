@@ -36,8 +36,7 @@ public class ConsultationController {
 	) {
 		ConsultationResponse response = ConsultationResponse.from(
 			consultationService.createConsultation(
-				request.studentName(),
-				request.studentPhone(),
+				request.studentSessionId(),
 				request.typeId()
 			)
 		);

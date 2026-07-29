@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   getAdminTypes,
   getAllConsultationsForAdmin,
@@ -19,6 +19,7 @@ const successMessage = ref('')
 const editingId = ref<number | null>(null)
 const processingIds = ref<Set<number>>(new Set())
 const isCreating = ref(false)
+let pollingInterval: number | null = null
 
 // 검색 필터 및 페이징 상태
 const searchFilter = ref({
@@ -156,6 +157,17 @@ const getStatusLabel = (status: string) => {
   }
 }
 
+const formatSchoolType = (schoolType: string): string => {
+  switch (schoolType) {
+    case 'MIDDLE_SCHOOL':
+      return '중학교'
+    case 'HIGH_SCHOOL':
+      return '고등학교'
+    default:
+      return schoolType
+  }
+}
+
 const getStatusBadgeClass = (status: string) => {
   switch (status) {
     case 'RECEIVED':
@@ -170,6 +182,20 @@ const getStatusBadgeClass = (status: string) => {
       return 'status-badge--cancelled'
     default:
       return ''
+  }
+}
+
+const refreshConsultations = async () => {
+  isLoadingConsultations.value = true
+  try {
+    const consultationsData = await getAllConsultationsForAdmin()
+    consultations.value = consultationsData.sort(
+      (a: Consultation, b: Consultation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+  } catch (error) {
+    console.error('Failed to refresh consultations:', error)
+  } finally {
+    isLoadingConsultations.value = false
   }
 }
 
@@ -359,6 +385,8 @@ const handleDelete = async (type: ConsultationType) => {
   }
 }
 
+
+// 5초 주기로 폴링 시작
 onMounted(async () => {
   try {
     const [typesData, consultationsData] = await Promise.all([
@@ -375,6 +403,31 @@ onMounted(async () => {
   } finally {
     isLoadingTypes.value = false
     isLoadingConsultations.value = false
+  }
+
+  // 5초 주기로 폴링 시작
+  pollingInterval = setInterval(async () => {
+    try {
+      const consultationsData = await getAllConsultationsForAdmin()
+      consultations.value = consultationsData.sort(
+        (a: Consultation, b: Consultation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      // currentPage가 totalPages를 초과하면 마지막 페이지로 보정
+      const total = Math.max(1, Math.ceil(filteredConsultations.value.length / pageSize))
+      if (currentPage.value > total) {
+        currentPage.value = total
+      }
+    } catch (error) {
+      console.error('Failed to refresh consultations:', error)
+    }
+  }, 5000)
+})
+
+// 컴포넌트 언마운트 시 폴링 중지
+onUnmounted(() => {
+  if (pollingInterval !== null) {
+    clearInterval(pollingInterval)
+    pollingInterval = null
   }
 })
 </script>
@@ -489,7 +542,8 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- 필터링 결과 통계 -->
+
+          <!-- 필터링 결과 통계 및 새로고침 버튼 -->
           <div class="filter-summary">
             <span>
               검색 결과 <strong>{{ filteredConsultations.length }}</strong>건
@@ -497,6 +551,15 @@ onMounted(async () => {
                 (전체 {{ consultations.length }}건 중)
               </span>
             </span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-refresh"
+              @click="refreshConsultations"
+              :disabled="isLoadingConsultations"
+            >
+              <span v-if="!isLoadingConsultations">새로고침</span>
+              <span v-else>새로고침 중...</span>
+            </button>
           </div>
 
           <!-- 결과 없음 -->
@@ -513,6 +576,7 @@ onMounted(async () => {
                   <th class="th-time">접수시간</th>
                   <th class="th-name">학생이름</th>
                   <th class="th-phone">학생휴대폰</th>
+                  <th class="th-school">학교/학년</th>
                   <th class="th-type">상담유형</th>
                   <th class="th-status">상태</th>
                   <th class="th-counselor">상담사</th>
@@ -523,6 +587,7 @@ onMounted(async () => {
                   <td class="td-time">{{ formatDateTime(item.createdAt) }}</td>
                   <td class="td-name">{{ item.studentName }}</td>
                   <td class="td-phone">{{ item.studentPhone }}</td>
+                  <td class="td-school">{{ formatSchoolType(item.schoolType) }} {{ item.grade }}학년</td>
                   <td class="td-type"><span class="type-tag">{{ item.typeName }}</span></td>
                   <td class="td-status">
                     <span class="status-badge" :class="getStatusBadgeClass(item.status)">
@@ -1286,6 +1351,11 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.td-school {
+  font-weight: 500;
+  color: #0f172a;
+}
+
 .type-tag {
   display: inline-block;
   padding: 0.15rem 0.5rem;
@@ -1398,6 +1468,10 @@ onMounted(async () => {
   margin-bottom: 1rem;
   font-size: 0.875rem;
   color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .filter-summary strong {
@@ -1408,6 +1482,10 @@ onMounted(async () => {
 .summary-total {
   color: #94a3b8;
   margin-left: 0.25rem;
+}
+
+.btn-refresh {
+  flex-shrink: 0;
 }
 
 /* 페이징 네비게이션 스타일 */

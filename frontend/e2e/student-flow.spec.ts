@@ -23,14 +23,16 @@ const createStudentIdentity = () => {
 
 const enterStudent = async (page: Page, name: string, phone: string) => {
   await page.goto('/receive')
-  await page.getByLabel('이름').fill(name)
-  await page.getByLabel('휴대폰 번호').fill(phone)
+  await page.getByLabel('\uc774\ub984').fill(name)
+  await page.getByLabel('\ud734\ub300\ud3f0 \ubc88\ud638').fill(phone)
+  await page.getByLabel('\uc911\ud559\uad50').check()
+  await page.getByLabel('1\ud559\ub144').check()
 
   const [typesResponse] = await Promise.all([
     page.waitForResponse((response) => {
       return response.url().includes('/api/types') && response.request().method() === 'GET' && response.status() === 200
     }),
-    page.getByRole('button', { name: '입장하기' }).click(),
+    page.getByRole('button', { name: '\uc785\uc7a5\ud558\uae30' }).click(),
   ])
 
   await expect(page).toHaveURL(/\/home$/)

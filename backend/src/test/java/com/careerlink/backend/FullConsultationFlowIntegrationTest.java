@@ -48,15 +48,32 @@ class FullConsultationFlowIntegrationTest {
 			.andExpect(jsonPath("$", hasSize(5)))
 			.andExpect(jsonPath("$[0].name", is("상담유형1")));
 
+		String studentEnterResponseBody = mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "studentName": "통합테스트학생",
+						  "studentPhone": "01012345678",
+						  "schoolType": "MIDDLE_SCHOOL",
+						  "grade": 1
+						}
+						"""))
+				.andExpect(status().isCreated())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		JsonNode createdStudentSession = objectMapper.readTree(studentEnterResponseBody);
+		long studentSessionId = createdStudentSession.get("id").asLong();
+
 		String consultationResponseBody = mockMvc.perform(post("/api/consultations")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "통합테스트학생",
-					  "studentPhone": "01012345678",
+					  "studentSessionId": %d,
 					  "typeId": %d
 					}
-					""".formatted(targetTypeId)))
+					""".formatted(studentSessionId, targetTypeId)))
 			.andExpect(status().isCreated())
 			.andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/consultations/")))
 			.andExpect(jsonPath("$.status", is("RECEIVED")))

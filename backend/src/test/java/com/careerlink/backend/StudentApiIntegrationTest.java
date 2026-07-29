@@ -44,18 +44,89 @@ class StudentApiIntegrationTest {
 	}
 
 	@Test
-	void createConsultationReturnsCreatedConsultation() throws Exception {
-		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-
-		mockMvc.perform(post("/api/consultations")
+	void enterStudentReturnsCreatedStudentSession() throws Exception {
+		mockMvc.perform(post("/api/students/enter")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
 					  "studentName": "홍길동",
 					  "studentPhone": "01012345678",
+					  "schoolType": "MIDDLE_SCHOOL",
+					  "grade": 2
+					}
+					"""))
+			.andExpect(status().isCreated())
+			.andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/students/enter/")))
+			.andExpect(jsonPath("$.studentName", is("홍길동")))
+			.andExpect(jsonPath("$.studentPhone", is("01012345678")))
+			.andExpect(jsonPath("$.schoolType", is("MIDDLE_SCHOOL")))
+			.andExpect(jsonPath("$.grade", is(2)));
+	}
+
+	@Test
+	void enterStudentReturnsBadRequestWhenSchoolTypeIsInvalid() throws Exception {
+		mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentName": "홍길동",
+					  "studentPhone": "01012345678",
+					  "schoolType": "INVALID_TYPE",
+					  "grade": 2
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.status", is(400)));
+	}
+
+	@Test
+	void enterStudentReturnsBadRequestWhenGradeIsOutOfRange() throws Exception {
+		mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentName": "홍길동",
+					  "studentPhone": "01012345678",
+					  "schoolType": "HIGH_SCHOOL",
+					  "grade": 4
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.status", is(400)))
+			.andExpect(jsonPath("$.fieldErrors.grade").exists());
+	}
+
+	@Test
+	void enterStudentReturnsBadRequestWhenRequiredFieldsAreMissing() throws Exception {
+		mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentName": "",
+					  "studentPhone": "010-12-3456"
+					}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.status", is(400)))
+			.andExpect(jsonPath("$.fieldErrors.studentName").exists())
+			.andExpect(jsonPath("$.fieldErrors.studentPhone").exists())
+			.andExpect(jsonPath("$.fieldErrors.schoolType").exists())
+			.andExpect(jsonPath("$.fieldErrors.grade").exists());
+	}
+
+	@Test
+	void createConsultationReturnsCreatedConsultation() throws Exception {
+		Long typeId = consultationTypeRepository.findAll().get(0).getId();
+		Long studentSessionId = enterStudent("홍길동", "01012345678");
+
+		mockMvc.perform(post("/api/consultations")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentSessionId": %d,
 					  "typeId": %d
 					}
-					""".formatted(typeId)))
+					""".formatted(studentSessionId, typeId)))
 			.andExpect(status().isCreated())
 			.andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/consultations/")))
 			.andExpect(jsonPath("$.studentName", is("홍길동")))
@@ -71,28 +142,42 @@ class StudentApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "",
-					  "studentPhone": "010-12-3456"
 					}
 					"""))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.status", is(400)))
-			.andExpect(jsonPath("$.fieldErrors.studentName").exists())
-			.andExpect(jsonPath("$.fieldErrors.studentPhone").exists())
+			.andExpect(jsonPath("$.fieldErrors.studentSessionId").exists())
 			.andExpect(jsonPath("$.fieldErrors.typeId").exists());
 	}
 
 	@Test
 	void createConsultationReturnsNotFoundWhenTypeDoesNotExist() throws Exception {
+		Long studentSessionId = enterStudent("홍길동", "01012345678");
+
 		mockMvc.perform(post("/api/consultations")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "홍길동",
-					  "studentPhone": "01012345678",
+					  "studentSessionId": %d,
 					  "typeId": 999999
 					}
-					"""))
+					""".formatted(studentSessionId)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.status", is(404)));
+	}
+
+	@Test
+	void createConsultationReturnsNotFoundWhenStudentSessionDoesNotExist() throws Exception {
+		Long typeId = consultationTypeRepository.findAll().get(0).getId();
+
+		mockMvc.perform(post("/api/consultations")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentSessionId": 999999,
+					  "typeId": %d
+					}
+					""".formatted(typeId)))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.status", is(404)));
 	}
@@ -100,16 +185,16 @@ class StudentApiIntegrationTest {
 	@Test
 	void getConsultationReturnsConsultationWhenItExists() throws Exception {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
+		Long studentSessionId = enterStudent("김학생", "010-1234-5678");
 
 		String location = mockMvc.perform(post("/api/consultations")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "김학생",
-					  "studentPhone": "010-1234-5678",
+					  "studentSessionId": %d,
 					  "typeId": %d
 					}
-					""".formatted(typeId)))
+					""".formatted(studentSessionId, typeId)))
 			.andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()
@@ -161,9 +246,10 @@ class StudentApiIntegrationTest {
 	void getConsultationsByStudentPhoneReturnsAllConsultationsInLatestOrder() throws Exception {
 		Long firstTypeId = consultationTypeRepository.findAll().get(0).getId();
 		Long secondTypeId = consultationTypeRepository.findAll().get(1).getId();
+		Long studentSessionId = enterStudent("다건학생", "01066667777");
 
-		String firstLocation = createConsultation("다건학생", "01066667777", firstTypeId);
-		String secondLocation = createConsultation("다건학생", "01066667777", secondTypeId);
+		String firstLocation = createConsultationForSession(studentSessionId, firstTypeId);
+		String secondLocation = createConsultationForSession(studentSessionId, secondTypeId);
 		createConsultation("다른학생", "01099990000", firstTypeId);
 
 		mockMvc.perform(get("/api/consultations")
@@ -189,16 +275,16 @@ class StudentApiIntegrationTest {
 	void sameStudentCanCreateMultipleConsultationsForDifferentTypes() throws Exception {
 		Long firstTypeId = consultationTypeRepository.findAll().get(0).getId();
 		Long secondTypeId = consultationTypeRepository.findAll().get(1).getId();
+		Long studentSessionId = enterStudent("복수신청학생", "01012121212");
 
 		mockMvc.perform(post("/api/consultations")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "복수신청학생",
-					  "studentPhone": "01012121212",
+					  "studentSessionId": %d,
 					  "typeId": %d
 					}
-					""".formatted(firstTypeId)))
+					""".formatted(studentSessionId, firstTypeId)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.typeId", is(firstTypeId.intValue())));
 
@@ -206,11 +292,10 @@ class StudentApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "studentName": "복수신청학생",
-					  "studentPhone": "01012121212",
+					  "studentSessionId": %d,
 					  "typeId": %d
 					}
-					""".formatted(secondTypeId)))
+					""".formatted(studentSessionId, secondTypeId)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.typeId", is(secondTypeId.intValue())));
 
@@ -221,19 +306,42 @@ class StudentApiIntegrationTest {
 	}
 
 	private String createConsultation(String studentName, String studentPhone, Long typeId) throws Exception {
+		Long studentSessionId = enterStudent(studentName, studentPhone);
+		return createConsultationForSession(studentSessionId, typeId);
+	}
+
+	private String createConsultationForSession(Long studentSessionId, Long typeId) throws Exception {
 		return mockMvc.perform(post("/api/consultations")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentSessionId": %d,
+					  "typeId": %d
+					}
+					""".formatted(studentSessionId, typeId)))
+			.andExpect(status().isCreated())
+			.andReturn()
+			.getResponse()
+			.getHeader("Location");
+	}
+
+	private Long enterStudent(String studentName, String studentPhone) throws Exception {
+		String location = mockMvc.perform(post("/api/students/enter")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
 					  "studentName": "%s",
 					  "studentPhone": "%s",
-					  "typeId": %d
+					  "schoolType": "MIDDLE_SCHOOL",
+					  "grade": 1
 					}
-					""".formatted(studentName, studentPhone, typeId)))
+					""".formatted(studentName, studentPhone)))
 			.andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()
 			.getHeader("Location");
+
+		return (long) extractId(location);
 	}
 
 	private int extractId(String location) {

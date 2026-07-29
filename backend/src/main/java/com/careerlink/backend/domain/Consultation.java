@@ -29,11 +29,9 @@ public class Consultation {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false)
-	private String studentName;
-
-	@Column(nullable = false)
-	private String studentPhone;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "student_session_id", nullable = false)
+	private StudentSession studentSession;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "type_id", nullable = false)
@@ -57,9 +55,8 @@ public class Consultation {
 	protected Consultation() {
 	}
 
-	public Consultation(String studentName, String studentPhone, ConsultationType type) {
-		this.studentName = studentName;
-		this.studentPhone = studentPhone;
+	public Consultation(StudentSession studentSession, ConsultationType type) {
+		this.studentSession = studentSession;
 		this.type = type;
 	}
 
@@ -83,11 +80,15 @@ public class Consultation {
 	}
 
 	public String getStudentName() {
-		return studentName;
+		return studentSession.getStudentName();
 	}
 
 	public String getStudentPhone() {
-		return studentPhone;
+		return studentSession.getStudentPhone();
+	}
+
+	public StudentSession getStudentSession() {
+		return studentSession;
 	}
 
 	public ConsultationType getType() {
@@ -140,8 +141,9 @@ public class Consultation {
 			return;
 		}
 
-		this.studentName = "***";
-		this.studentPhone = "***-****-****";
+		// 주의: 같은 StudentSession을 참조하는 다른 Consultation이 있다면, 한 쪽이 마스킹될 때 함께 마스킹된 것처럼
+		// 보이는 부작용이 있을 수 있다(StudentSession 컴멘트 참고). 다음 태스크에서 정책 재검토 필요.
+		this.studentSession.maskSensitiveData();
 		this.maskedAt = maskedAt;
 	}
 

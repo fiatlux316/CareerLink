@@ -15,8 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.careerlink.backend.domain.Consultation;
 import com.careerlink.backend.domain.ConsultationType;
+import com.careerlink.backend.domain.SchoolType;
+import com.careerlink.backend.domain.StudentSession;
 import com.careerlink.backend.repository.ConsultationRepository;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
+import com.careerlink.backend.repository.StudentSessionRepository;
 import com.careerlink.backend.service.ConsultationService;
 import com.careerlink.backend.service.PrivacyMaskingService;
 
@@ -40,6 +43,9 @@ class PrivacyMaskingServiceIntegrationTest {
 	private ConsultationTypeRepository consultationTypeRepository;
 
 	@Autowired
+	private StudentSessionRepository studentSessionRepository;
+
+	@Autowired
 	private EntityManager entityManager;
 
 	@Autowired
@@ -52,13 +58,15 @@ class PrivacyMaskingServiceIntegrationTest {
 
 		Consultation oldCompleted = createCompletedConsultation(consultationType, "학생A", "01011112222", "상담사A");
 		Consultation recentCompleted = createCompletedConsultation(consultationType, "학생B", "01022223333", "상담사B");
-		Consultation receivedConsultation = consultationService.createConsultation("학생C", "01033334444", consultationType.getId());
+		Long receivedStudentSessionId = createStudentSession("학생C", "01033334444");
+		Consultation receivedConsultation = consultationService.createConsultation(receivedStudentSessionId, consultationType.getId());
 		Consultation alreadyMasked = createCompletedConsultation(consultationType, "학생D", "01044445555", "상담사C");
 
-		updateConsultation(oldCompleted.getId(), now.minusDays(31), null, "학생A", "01011112222");
-		updateConsultation(recentCompleted.getId(), now.minusDays(10), null, "학생B", "01022223333");
-		updateConsultation(receivedConsultation.getId(), now.minusDays(45), null, "학생C", "01033334444");
-		updateConsultation(alreadyMasked.getId(), now.minusDays(31), now.minusDays(1), "***", "***-****-****");
+		updateConsultationTimestamps(oldCompleted.getId(), now.minusDays(31), null);
+		updateConsultationTimestamps(recentCompleted.getId(), now.minusDays(10), null);
+		updateConsultationTimestamps(receivedConsultation.getId(), now.minusDays(45), null);
+		updateConsultationTimestamps(alreadyMasked.getId(), now.minusDays(31), now.minusDays(1));
+		updateStudentSession(alreadyMasked.getStudentSession().getId(), "***", "***-****-****");
 
 		int maskedCount = privacyMaskingService.maskExpiredConsultations();
 
@@ -88,40 +96,56 @@ class PrivacyMaskingServiceIntegrationTest {
 		assertThat(preservedMaskedConsultation.getMaskedAt()).isEqualTo(now.minusDays(1));
 	}
 
+	private Long createStudentSession(String studentName, String studentPhone) {
+		StudentSession studentSession = studentSessionRepository.saveAndFlush(
+			new StudentSession(studentName, studentPhone, SchoolType.MIDDLE_SCHOOL, 1)
+		);
+		return studentSession.getId();
+	}
+
 	private Consultation createCompletedConsultation(
 		ConsultationType consultationType,
 		String studentName,
 		String studentPhone,
 		String counselorName
 	) {
-		Consultation consultation = consultationService.createConsultation(studentName, studentPhone, consultationType.getId());
+		Long studentSessionId = createStudentSession(studentName, studentPhone);
+		Consultation consultation = consultationService.createConsultation(studentSessionId, consultationType.getId());
 		consultationService.accept(consultation.getId(), counselorName);
 		consultationService.startProgress(consultation.getId());
 		return consultationService.complete(consultation.getId());
 	}
 
-	private void updateConsultation(
-		Long id,
-		LocalDateTime updatedAt,
-		LocalDateTime maskedAt,
-		String studentName,
-		String studentPhone
-	) {
+	private void updateConsultationTimestamps(Long id, LocalDateTime updatedAt, LocalDateTime maskedAt) {
 		entityManager.createQuery(
 			"""
 			update Consultation c
 			set c.updatedAt = :updatedAt,
-			    c.maskedAt = :maskedAt,
-			    c.studentName = :studentName,
-			    c.studentPhone = :studentPhone
+			    c.maskedAt = :maskedAt
 			where c.id = :id
 			"""
 		)
 			.setParameter("updatedAt", updatedAt)
 			.setParameter("maskedAt", maskedAt)
+			.setParameter("id", id)
+			.executeUpdate();
+
+		entityManager.flush();
+		entityManager.clear();
+	}
+
+	private void updateStudentSession(Long studentSessionId, String studentName, String studentPhone) {
+		entityManager.createQuery(
+			"""
+			update StudentSession s
+			set s.studentName = :studentName,
+			    s.studentPhone = :studentPhone
+			where s.id = :id
+			"""
+		)
 			.setParameter("studentName", studentName)
 			.setParameter("studentPhone", studentPhone)
-			.setParameter("id", id)
+			.setParameter("id", studentSessionId)
 			.executeUpdate();
 
 		entityManager.flush();

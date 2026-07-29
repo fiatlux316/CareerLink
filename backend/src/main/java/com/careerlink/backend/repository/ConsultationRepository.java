@@ -20,7 +20,7 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
 
 	long countByType(ConsultationType type);
 
-	List<Consultation> findByStudentPhoneOrderByCreatedAtDesc(String studentPhone);
+	List<Consultation> findByStudentSession_StudentPhoneOrderByCreatedAtDesc(String studentPhone);
 
 	List<Consultation> findByStatusOrderByCreatedAtAsc(ConsultationStatus status);
 

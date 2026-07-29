@@ -273,6 +273,18 @@ const formatTime = (dateString: string): string => {
   return `${month}/${day} ${hours}:${minutes}`
 }
 
+// 학교 타입 포맷팅
+const formatSchoolType = (schoolType: string): string => {
+  switch (schoolType) {
+    case 'MIDDLE_SCHOOL':
+      return '중학교'
+    case 'HIGH_SCHOOL':
+      return '고등학교'
+    default:
+      return schoolType
+  }
+}
+
 // 상담 유형 목록 로드 및 대시보드 초기화
 onMounted(async () => {
   try {
@@ -494,7 +506,7 @@ const isRefreshDisabled = computed(() => {
             <div v-else class="consultation-items">
               <div v-for="consultation in receivedConsultations" :key="consultation.id" class="consultation-item">
                 <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span></div>
+                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
                   <span class="badge badge-received">대기</span>
                 </div>
                 <div class="consultation-item__meta">
@@ -530,7 +542,7 @@ const isRefreshDisabled = computed(() => {
             <div v-else class="consultation-items">
               <div v-for="consultation in acceptedConsultations" :key="consultation.id" class="consultation-item">
                 <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span></div>
+                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
                   <span class="badge badge-accepted">수락완료</span>
                 </div>
                 <div class="consultation-item__meta">
@@ -566,7 +578,7 @@ const isRefreshDisabled = computed(() => {
             <div v-else class="consultation-items">
               <div v-for="consultation in inProgressConsultations" :key="consultation.id" class="consultation-item">
                 <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span></div>
+                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
                   <span class="badge badge-in-progress">진행중</span>
                 </div>
                 <div class="consultation-item__meta">

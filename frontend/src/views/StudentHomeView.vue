@@ -12,6 +12,7 @@ const isLoadingTypes = ref(true)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 const fieldErrors = ref<Record<string, string>>({})
+const studentSessionId = ref(0)
 const studentName = ref('')
 const studentPhone = ref('')
 const lastConsultationInfo = ref<{ id: string; typeName: string } | null>(null)
@@ -45,8 +46,7 @@ const handleSubmit = async () => {
 
   try {
     const consultation = await createConsultation({
-      studentName: studentName.value,
-      studentPhone: studentPhone.value,
+      studentSessionId: studentSessionId.value,
       typeId: formData.value.typeId,
     })
 
@@ -93,15 +93,17 @@ const handleSubmit = async () => {
 // 상담 유형 목록 로드
 onMounted(async () => {
   // localStorage에서 입장 정보 조회
+  const savedSessionId = localStorage.getItem('careerlink_student_session_id')
   const savedName = localStorage.getItem('careerlink_student_name')
   const savedPhone = localStorage.getItem('careerlink_student_phone')
 
-  // 입장 정보가 없으면 입장 화면으로 리다이렉트
-  if (!savedName || !savedPhone) {
+  // 세션 아이디가 없으면 입장 화면으로 리다이렉트
+  if (!savedSessionId || !savedName || !savedPhone) {
     router.push('/receive')
     return
   }
 
+  studentSessionId.value = parseInt(savedSessionId, 10)
   studentName.value = savedName
   studentPhone.value = savedPhone
 

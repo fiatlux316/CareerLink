@@ -158,18 +158,37 @@ class CounselorApiIntegrationTest {
 	}
 
 	private String createConsultation(String studentName, String studentPhone, Long typeId) throws Exception {
+		Long studentSessionId = enterStudent(studentName, studentPhone);
 		return mockMvc.perform(post("/api/consultations")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentSessionId": %d,
+					  "typeId": %d
+					}
+					""".formatted(studentSessionId, typeId)))
+			.andExpect(status().isCreated())
+			.andReturn()
+			.getResponse()
+			.getHeader("Location");
+	}
+
+	private Long enterStudent(String studentName, String studentPhone) throws Exception {
+		String location = mockMvc.perform(post("/api/students/enter")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
 					  "studentName": "%s",
 					  "studentPhone": "%s",
-					  "typeId": %d
+					  "schoolType": "MIDDLE_SCHOOL",
+					  "grade": 1
 					}
-					""".formatted(studentName, studentPhone, typeId)))
+					""".formatted(studentName, studentPhone)))
 			.andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()
 			.getHeader("Location");
+
+		return Long.parseLong(location.substring(location.lastIndexOf('/') + 1));
 	}
 }

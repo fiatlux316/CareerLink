@@ -14,9 +14,12 @@ import org.springframework.test.context.ActiveProfiles;
 import com.careerlink.backend.domain.Consultation;
 import com.careerlink.backend.domain.ConsultationStatus;
 import com.careerlink.backend.domain.ConsultationType;
+import com.careerlink.backend.domain.SchoolType;
+import com.careerlink.backend.domain.StudentSession;
 import com.careerlink.backend.exception.InvalidStatusTransitionException;
 import com.careerlink.backend.exception.ResourceNotFoundException;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
+import com.careerlink.backend.repository.StudentSessionRepository;
 import com.careerlink.backend.service.ConsultationService;
 
 @SpringBootTest
@@ -30,10 +33,13 @@ class ConsultationServiceIntegrationTest {
 	@Autowired
 	private ConsultationTypeRepository consultationTypeRepository;
 
+	@Autowired
+	private StudentSessionRepository studentSessionRepository;
+
 	@Test
 	void receivedConsultationCanBeAccepted() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생1", "01011112222", typeId);
+		Consultation consultation = createConsultation("학생1", "01011112222", typeId);
 
 		Consultation acceptedConsultation = consultationService.accept(consultation.getId(), "상담사A");
 
@@ -45,7 +51,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void inProgressConsultationCanBeCompleted() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생2", "01022223333", typeId);
+		Consultation consultation = createConsultation("학생2", "01022223333", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사B");
 		consultationService.startProgress(consultation.getId());
@@ -57,7 +63,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void receivedConsultationCanBeCancelled() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생취소1", "01012121212", typeId);
+		Consultation consultation = createConsultation("학생취소1", "01012121212", typeId);
 
 		Consultation cancelledConsultation = consultationService.cancel(consultation.getId());
 
@@ -67,7 +73,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void receivedConsultationCannotBeCompletedDirectly() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생3", "01033334444", typeId);
+		Consultation consultation = createConsultation("학생3", "01033334444", typeId);
 
 		assertThatThrownBy(() -> consultationService.complete(consultation.getId()))
 			.isInstanceOf(InvalidStatusTransitionException.class)
@@ -78,7 +84,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void completedConsultationCannotBeAcceptedAgain() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생4", "01044445555", typeId);
+		Consultation consultation = createConsultation("학생4", "01044445555", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사C");
 		consultationService.startProgress(consultation.getId());
@@ -93,7 +99,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void acceptedConsultationCannotBeCancelled() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생취소2", "01034343434", typeId);
+		Consultation consultation = createConsultation("학생취소2", "01034343434", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사취소");
 
@@ -106,7 +112,7 @@ class ConsultationServiceIntegrationTest {
 	@Test
 	void completedConsultationCannotBeCancelled() {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
-		Consultation consultation = consultationService.createConsultation("학생취소3", "01056565656", typeId);
+		Consultation consultation = createConsultation("학생취소3", "01056565656", typeId);
 
 		consultationService.accept(consultation.getId(), "상담사완료");
 		consultationService.startProgress(consultation.getId());
@@ -124,9 +130,9 @@ class ConsultationServiceIntegrationTest {
 		Long firstTypeId = consultationTypes.get(0).getId();
 		Long secondTypeId = consultationTypes.get(1).getId();
 
-		Consultation firstReceived = consultationService.createConsultation("학생5", "01055556666", firstTypeId);
-		Consultation acceptedConsultation = consultationService.createConsultation("학생6", "01066667777", firstTypeId);
-		consultationService.createConsultation("학생7", "01077778888", secondTypeId);
+		Consultation firstReceived = createConsultation("학생5", "01055556666", firstTypeId);
+		Consultation acceptedConsultation = createConsultation("학생6", "01066667777", firstTypeId);
+		createConsultation("학생7", "01077778888", secondTypeId);
 		consultationService.accept(acceptedConsultation.getId(), "상담사E");
 
 		List<Consultation> receivedConsultations = consultationService.findByTypeAndStatus(firstTypeId, ConsultationStatus.RECEIVED);
@@ -139,8 +145,15 @@ class ConsultationServiceIntegrationTest {
 
 	@Test
 	void createConsultationFailsWhenTypeDoesNotExist() {
-		assertThatThrownBy(() -> consultationService.createConsultation("학생8", "01088889999", 999999L))
+		assertThatThrownBy(() -> createConsultation("학생8", "01088889999", 999999L))
 			.isInstanceOf(ResourceNotFoundException.class)
 			.hasMessageContaining("ConsultationType");
+	}
+
+	private Consultation createConsultation(String studentName, String studentPhone, Long typeId) {
+		StudentSession studentSession = studentSessionRepository.saveAndFlush(
+			new StudentSession(studentName, studentPhone, SchoolType.MIDDLE_SCHOOL, 1)
+		);
+		return consultationService.createConsultation(studentSession.getId(), typeId);
 	}
 }

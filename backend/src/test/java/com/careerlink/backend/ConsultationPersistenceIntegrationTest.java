@@ -13,8 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.careerlink.backend.domain.Consultation;
 import com.careerlink.backend.domain.ConsultationStatus;
 import com.careerlink.backend.domain.ConsultationType;
+import com.careerlink.backend.domain.SchoolType;
+import com.careerlink.backend.domain.StudentSession;
 import com.careerlink.backend.repository.ConsultationRepository;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
+import com.careerlink.backend.repository.StudentSessionRepository;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -26,6 +29,9 @@ class ConsultationPersistenceIntegrationTest {
 
 	@Autowired
 	private ConsultationRepository consultationRepository;
+
+	@Autowired
+	private StudentSessionRepository studentSessionRepository;
 
 	@Test
 	void consultationTypesAreSeededOnStartup() {
@@ -40,7 +46,10 @@ class ConsultationPersistenceIntegrationTest {
 	@Test
 	void consultationPersistsWithDefaultStatusAndTimestamps() {
 		ConsultationType consultationType = consultationTypeRepository.findAll().get(0);
-		Consultation consultation = new Consultation("홍길동", "01012345678", consultationType);
+		StudentSession studentSession = studentSessionRepository.saveAndFlush(
+			new StudentSession("홍길동", "01012345678", SchoolType.MIDDLE_SCHOOL, 1)
+		);
+		Consultation consultation = new Consultation(studentSession, consultationType);
 
 		Consultation savedConsultation = consultationRepository.saveAndFlush(consultation);
 

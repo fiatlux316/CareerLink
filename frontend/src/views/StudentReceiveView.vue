@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { enterStudent } from '../api/student'
+import type { SchoolType, ErrorResponse } from '../types/consultation'
 
 const router = useRouter()
-
 // 상태 관리
 const isSubmitting = ref(false)
 const errorMessage = ref('')
@@ -13,6 +14,8 @@ const fieldErrors = ref<Record<string, string>>({})
 const formData = ref({
   studentName: '',
   studentPhone: '',
+  schoolType: '' as SchoolType | '',
+  grade: 0,
 })
 
 // 핸드폰 번호 유효성 검증 (010-1234-5678 또는 01012345678 형식)
@@ -36,6 +39,19 @@ const validateForm = (): boolean => {
     isValid = false
   } else if (!validatePhoneNumber(formData.value.studentPhone)) {
     fieldErrors.value.studentPhone = '휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)'
+    isValid = false
+  }
+
+  if (!formData.value.schoolType) {
+    fieldErrors.value.schoolType = '학교를 선택해주세요'
+    isValid = false
+  }
+
+  if (!formData.value.grade) {
+    fieldErrors.value.grade = '학년을 선택해주세요'
+    isValid = false
+  } else if (formData.value.grade < 1 || formData.value.grade > 3) {
+    fieldErrors.value.grade = '학년은 1학년 ~ 3학년만 선택 가능합니다'
     isValid = false
   }
 
@@ -66,15 +82,37 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   try {
+    const studentSession = await enterStudent({
+      studentName: formData.value.studentName,
+      studentPhone: formData.value.studentPhone,
+      schoolType: formData.value.schoolType as SchoolType,
+      grade: formData.value.grade,
+    })
+
     // localStorage에 학생 정보 저장
-    localStorage.setItem('careerlink_student_name', formData.value.studentName)
-    localStorage.setItem('careerlink_student_phone', formData.value.studentPhone)
+    localStorage.setItem('careerlink_student_name', studentSession.studentName)
+    localStorage.setItem('careerlink_student_phone', studentSession.studentPhone)
+    localStorage.setItem('careerlink_student_session_id', studentSession.id.toString())
 
     // 홈 화면으로 이동
     router.push('/home')
-  } catch (error) {
-    console.error('Error saving student info:', error)
-    errorMessage.value = '입장 정보를 저장할 수 없습니다'
+  } catch (error: unknown) {
+    const err = error as any
+    const status = err?.response?.status
+    const data = err?.response?.data as ErrorResponse | undefined
+
+    const responseFieldErrors = data?.fieldErrors ?? data?.errors
+
+    if (status === 400) {
+      if (responseFieldErrors) {
+        fieldErrors.value = responseFieldErrors
+        errorMessage.value = '입력 정보를 다시 확인해주세요'
+      } else {
+        errorMessage.value = data?.message || '입력 정보가 올바르지 않습니다'
+      }
+    } else {
+      errorMessage.value = '입장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요'
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -82,10 +120,12 @@ const handleSubmit = async () => {
 
 // 컴포넌트 마운트 - 이미 입장 정보가 있으면 홈 화면으로 리다이렉트
 onMounted(() => {
+  const savedSessionId = localStorage.getItem('careerlink_student_session_id')
   const savedName = localStorage.getItem('careerlink_student_name')
   const savedPhone = localStorage.getItem('careerlink_student_phone')
 
-  if (savedName && savedPhone) {
+  // session_id가 있으면 단성 입장 직루
+  if (savedSessionId && savedName && savedPhone) {
     router.push('/home')
   }
 })
@@ -145,6 +185,77 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- 학교 선택 -->
+        <div class="form-group">
+          <label class="form-label">학교 · 학년</label>
+          <fieldset class="school-grade-group">
+            <div class="school-options">
+              <label class="radio-item">
+                <input
+                  v-model="formData.schoolType"
+                  type="radio"
+                  value="MIDDLE_SCHOOL"
+                  name="schoolType"
+                  :disabled="isSubmitting"
+                  class="radio-input"
+                />
+                <span class="radio-label">중학교</span>
+              </label>
+              <label class="radio-item">
+                <input
+                  v-model="formData.schoolType"
+                  type="radio"
+                  value="HIGH_SCHOOL"
+                  name="schoolType"
+                  :disabled="isSubmitting"
+                  class="radio-input"
+                />
+                <span class="radio-label">고등학교</span>
+              </label>
+            </div>
+            <div class="grade-options">
+              <label class="radio-item">
+                <input
+                  v-model.number="formData.grade"
+                  type="radio"
+                  :value="1"
+                  name="grade"
+                  :disabled="isSubmitting"
+                  class="radio-input"
+                />
+                <span class="radio-label">1학년</span>
+              </label>
+              <label class="radio-item">
+                <input
+                  v-model.number="formData.grade"
+                  type="radio"
+                  :value="2"
+                  name="grade"
+                  :disabled="isSubmitting"
+                  class="radio-input"
+                />
+                <span class="radio-label">2학년</span>
+              </label>
+              <label class="radio-item">
+                <input
+                  v-model.number="formData.grade"
+                  type="radio"
+                  :value="3"
+                  name="grade"
+                  :disabled="isSubmitting"
+                  class="radio-input"
+                />
+                <span class="radio-label">3학년</span>
+              </label>
+            </div>
+          </fieldset>
+          <div v-if="fieldErrors.schoolType" class="form-error">
+            {{ fieldErrors.schoolType }}
+          </div>
+          <div v-if="fieldErrors.grade" class="form-error">
+            {{ fieldErrors.grade }}
+          </div>
+        </div>
         <!-- 제출 버튼 -->
         <button
           type="submit"
@@ -256,6 +367,75 @@ onMounted(() => {
   font-weight: 500;
 }
 
+/* 학교 및 학년 선택 */
+.school-grade-group {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.school-options,
+.grade-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.grade-options {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.radio-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-strong);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.radio-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.radio-input {
+  cursor: pointer;
+  accent-color: var(--primary);
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+}
+
+.radio-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.radio-label {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  user-select: none;
+}
+
+.radio-item input:checked + .radio-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.radio-item:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
 /* 상담 유형 선택 */
 .consultation-types {
   display: flex;

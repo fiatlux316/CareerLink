@@ -10,8 +10,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.careerlink.backend.domain.ConsultationType;
+import com.careerlink.backend.domain.SchoolType;
+import com.careerlink.backend.domain.StudentSession;
 import com.careerlink.backend.exception.TypeInUseException;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
+import com.careerlink.backend.repository.StudentSessionRepository;
 import com.careerlink.backend.service.ConsultationService;
 import com.careerlink.backend.service.ConsultationTypeService;
 
@@ -28,6 +31,9 @@ class ConsultationTypeServiceIntegrationTest {
 
 	@Autowired
 	private ConsultationTypeRepository consultationTypeRepository;
+
+	@Autowired
+	private StudentSessionRepository studentSessionRepository;
 
 	@Test
 	void createTypeCreatesNewConsultationType() {
@@ -51,7 +57,10 @@ class ConsultationTypeServiceIntegrationTest {
 	@Test
 	void deleteTypeThrowsWhenConsultationTypeIsReferenced() {
 		ConsultationType consultationType = consultationTypeService.createType("삭제불가유형", "참조 있음");
-		consultationService.createConsultation("참조학생", "01078787878", consultationType.getId());
+		StudentSession studentSession = studentSessionRepository.saveAndFlush(
+			new StudentSession("참조학생", "01078787878", SchoolType.MIDDLE_SCHOOL, 1)
+		);
+		consultationService.createConsultation(studentSession.getId(), consultationType.getId());
 
 		assertThatThrownBy(() -> consultationTypeService.deleteType(consultationType.getId()))
 			.isInstanceOf(TypeInUseException.class)

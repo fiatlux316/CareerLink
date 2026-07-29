@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.careerlink.backend.domain.Consultation;
 import com.careerlink.backend.domain.ConsultationStatus;
 import com.careerlink.backend.domain.ConsultationType;
+import com.careerlink.backend.domain.StudentSession;
 import com.careerlink.backend.exception.ResourceNotFoundException;
 import com.careerlink.backend.repository.ConsultationRepository;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
+import com.careerlink.backend.repository.StudentSessionRepository;
 
 @Service
 @Transactional(readOnly = true)
@@ -18,19 +20,23 @@ public class ConsultationService {
 
 	private final ConsultationRepository consultationRepository;
 	private final ConsultationTypeRepository consultationTypeRepository;
+	private final StudentSessionRepository studentSessionRepository;
 
 	public ConsultationService(
 		ConsultationRepository consultationRepository,
-		ConsultationTypeRepository consultationTypeRepository
+		ConsultationTypeRepository consultationTypeRepository,
+		StudentSessionRepository studentSessionRepository
 	) {
 		this.consultationRepository = consultationRepository;
 		this.consultationTypeRepository = consultationTypeRepository;
+		this.studentSessionRepository = studentSessionRepository;
 	}
 
 	@Transactional
-	public Consultation createConsultation(String studentName, String studentPhone, Long typeId) {
+	public Consultation createConsultation(Long studentSessionId, Long typeId) {
+		StudentSession studentSession = getStudentSession(studentSessionId);
 		ConsultationType consultationType = getConsultationType(typeId);
-		Consultation consultation = new Consultation(studentName, studentPhone, consultationType);
+		Consultation consultation = new Consultation(studentSession, consultationType);
 
 		return initializeConsultation(consultationRepository.saveAndFlush(consultation));
 	}
@@ -52,7 +58,7 @@ public class ConsultationService {
 	}
 
 	public List<Consultation> findByStudentPhone(String studentPhone) {
-		return consultationRepository.findByStudentPhoneOrderByCreatedAtDesc(studentPhone)
+		return consultationRepository.findByStudentSession_StudentPhoneOrderByCreatedAtDesc(studentPhone)
 			.stream()
 			.map(this::initializeConsultation)
 			.toList();
@@ -102,9 +108,19 @@ public class ConsultationService {
 			.orElseThrow(() -> new ResourceNotFoundException("ConsultationType", typeId));
 	}
 
+	private StudentSession getStudentSession(Long studentSessionId) {
+		return studentSessionRepository.findById(studentSessionId)
+			.orElseThrow(() -> new ResourceNotFoundException("StudentSession", studentSessionId));
+	}
+
 	private Consultation initializeConsultation(Consultation consultation) {
 		consultation.getType().getId();
 		consultation.getType().getName();
+		consultation.getStudentSession().getId();
+		consultation.getStudentSession().getStudentName();
+		consultation.getStudentSession().getStudentPhone();
+		consultation.getStudentSession().getSchoolType();
+		consultation.getStudentSession().getGrade();
 		return consultation;
 	}
 }

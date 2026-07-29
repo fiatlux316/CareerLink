@@ -197,15 +197,15 @@ class AdminApiIntegrationTest {
 
 		Long createdId = extractId(location);
 
+		Long studentSessionId = enterStudent("참조학생", "01034343434");
 		mockMvc.perform(post("/api/consultations")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
-						  "studentName": "참조학생",
-						  "studentPhone": "01034343434",
+						  "studentSessionId": %d,
 						  "typeId": %d
 						}
-						""".formatted(createdId)))
+						""".formatted(studentSessionId, createdId)))
 				.andExpect(status().isCreated());
 
 		mockMvc.perform(delete("/api/admin/types/{id}", createdId))
@@ -227,5 +227,24 @@ class AdminApiIntegrationTest {
 
 	private Long extractId(String location) {
 		return Long.parseLong(location.substring(location.lastIndexOf('/') + 1));
+	}
+
+	private Long enterStudent(String studentName, String studentPhone) throws Exception {
+		String location = mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "studentName": "%s",
+						  "studentPhone": "%s",
+						  "schoolType": "MIDDLE_SCHOOL",
+						  "grade": 1
+						}
+						""".formatted(studentName, studentPhone)))
+				.andExpect(status().isCreated())
+				.andReturn()
+				.getResponse()
+				.getHeader("Location");
+
+		return extractId(location);
 	}
 }

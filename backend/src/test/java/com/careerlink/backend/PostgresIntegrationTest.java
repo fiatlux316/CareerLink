@@ -181,11 +181,11 @@ class PostgresIntegrationTest {
 	}
 
 	private ConsultationResponse createConsultation(String studentName, String studentPhone, Long typeId) {
+		Long studentSessionId = enterStudent(studentName, studentPhone);
 		ResponseEntity<ConsultationResponse> response = restTemplate.postForEntity(
 			url("/api/consultations"),
 			jsonRequest(Map.of(
-				"studentName", studentName,
-				"studentPhone", studentPhone,
+				"studentSessionId", studentSessionId,
 				"typeId", typeId
 			)),
 			ConsultationResponse.class
@@ -193,6 +193,22 @@ class PostgresIntegrationTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		return response.getBody();
+	}
+
+	private Long enterStudent(String studentName, String studentPhone) {
+		ResponseEntity<StudentSessionResponse> response = restTemplate.postForEntity(
+			url("/api/students/enter"),
+			jsonRequest(Map.of(
+				"studentName", studentName,
+				"studentPhone", studentPhone,
+				"schoolType", "MIDDLE_SCHOOL",
+				"grade", 1
+			)),
+			StudentSessionResponse.class
+		);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+		return response.getBody().id();
 	}
 
 	private HttpEntity<Map<String, Object>> jsonRequest(Map<String, Object> body) {
@@ -209,6 +225,16 @@ class PostgresIntegrationTest {
 	}
 
 	private record CounselorSessionResponse(Long id, String counselorName, Long typeId, String typeName, String enteredAt) {
+	}
+
+	private record StudentSessionResponse(
+		Long id,
+		String studentName,
+		String studentPhone,
+		String schoolType,
+		Integer grade,
+		String enteredAt
+	) {
 	}
 
 	private record ConsultationResponse(
