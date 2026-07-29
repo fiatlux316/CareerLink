@@ -30,7 +30,7 @@ public class Consultation {
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "student_session_id", nullable = false)
+	@JoinColumn(name = "student_id", nullable = false)
 	private StudentSession studentSession;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

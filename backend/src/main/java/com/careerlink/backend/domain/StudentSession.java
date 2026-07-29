@@ -23,21 +23,24 @@ public class StudentSession {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false)
+	@Column(name = "student_name", nullable = false)
 	private String studentName;
 
-	@Column(nullable = false)
+	@Column(name = "student_phone", nullable = false)
 	private String studentPhone;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
+	@Column(name = "school_type", nullable = false)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	private SchoolType schoolType;
 
-	@Column(nullable = false)
+	@Column(name = "grade", nullable = false)
 	private Integer grade;
 
-	@Column(nullable = false)
+	@Column(name = "created_at", nullable = false)
+	private LocalDateTime createdAt;
+
+	@Column(name = "entered_at", nullable = false)
 	private LocalDateTime enteredAt;
 
 	protected StudentSession() {
@@ -52,7 +55,9 @@ public class StudentSession {
 
 	@PrePersist
 	void prePersist() {
-		enteredAt = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now();
+		this.createdAt = now;
+		this.enteredAt = now;
 	}
 
 	public Long getId() {
@@ -75,8 +80,12 @@ public class StudentSession {
 		return grade;
 	}
 
+	public LocalDateTime getCreatedAt() {
+		return createdAt != null ? createdAt : enteredAt;
+	}
+
 	public LocalDateTime getEnteredAt() {
-		return enteredAt;
+		return enteredAt != null ? enteredAt : createdAt;
 	}
 
 	// 주의: 여러 Consultation이 동일 StudentSession을 참조할 수 있어(한 학생이 여러 유형에 신청),

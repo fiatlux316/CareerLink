@@ -368,8 +368,8 @@ onUnmounted(() => {
 
 .consultation-item__main {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.125rem;
   flex: 1;
   min-width: 0;
 }
@@ -382,7 +382,7 @@ onUnmounted(() => {
 }
 
 .consultation-item__date {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: #64748b;
   white-space: nowrap;
 }

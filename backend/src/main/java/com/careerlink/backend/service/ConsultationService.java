@@ -21,15 +21,18 @@ public class ConsultationService {
 	private final ConsultationRepository consultationRepository;
 	private final ConsultationTypeRepository consultationTypeRepository;
 	private final StudentSessionRepository studentSessionRepository;
+	private final NotificationService notificationService;
 
 	public ConsultationService(
 		ConsultationRepository consultationRepository,
 		ConsultationTypeRepository consultationTypeRepository,
-		StudentSessionRepository studentSessionRepository
+		StudentSessionRepository studentSessionRepository,
+		NotificationService notificationService
 	) {
 		this.consultationRepository = consultationRepository;
 		this.consultationTypeRepository = consultationTypeRepository;
 		this.studentSessionRepository = studentSessionRepository;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
@@ -75,8 +78,16 @@ public class ConsultationService {
 	public Consultation accept(Long consultationId, String counselorName) {
 		Consultation consultation = getConsultation(consultationId);
 		consultation.accept(counselorName);
+		Consultation saved = consultationRepository.saveAndFlush(consultation);
 
-		return initializeConsultation(consultationRepository.saveAndFlush(consultation));
+		notificationService.sendAcceptNotification(
+			saved.getStudentName(),
+			saved.getStudentPhone(),
+			counselorName,
+			saved.getType().getName()
+		);
+
+		return initializeConsultation(saved);
 	}
 
 	@Transactional

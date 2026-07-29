@@ -30,7 +30,45 @@ const inProgressConsultations = ref<Consultation[]>([])
 const isLoadingDashboard = ref(false)
 const dashboardErrorMessage = ref('')
 const processingItemIds = ref<Set<string>>(new Set())
+const knownReceivedIds = ref<Set<string>>(new Set())
+const isSoundEnabled = ref(true)
 let pollingInterval: number | null = null
+
+// Web Audio API 기반 신규 접수 알림음 (C5 -> G5 2음 알림 차임벨)
+const playNotificationSound = () => {
+  if (!isSoundEnabled.value) return
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const audioCtx = new AudioContextClass()
+
+    const now = audioCtx.currentTime
+    const osc1 = audioCtx.createOscillator()
+    const osc2 = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(523.25, now)
+    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.15)
+
+    osc2.type = 'triangle'
+    osc2.frequency.setValueAtTime(1046.5, now + 0.15)
+
+    gain.gain.setValueAtTime(0.3, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+
+    osc1.connect(gain)
+    osc2.connect(gain)
+    gain.connect(audioCtx.destination)
+
+    osc1.start(now)
+    osc1.stop(now + 0.2)
+    osc2.start(now + 0.15)
+    osc2.stop(now + 0.5)
+  } catch (error) {
+    console.error('Failed to play notification sound:', error)
+  }
+}
 
 // 핸드폰 번호 유효성 검증 (010-1234-5678 또는 01012345678 형식)
 const validatePhoneNumber = (phone: string): boolean => {
@@ -102,8 +140,9 @@ const handleSubmit = async () => {
     localStorage.setItem('careerlink_counselor_session', JSON.stringify(sessionInfo))
     counselorSessionInfo.value = sessionInfo
     hasEntered.value = true
-    // 입장 후 즉시 대시보드 로드
+    // 입장 후 즉시 대시보드 로드 및 백그라운드 폴링 시작
     await loadDashboard()
+    startPolling()
   } catch (error: unknown) {
     const err = error as any
     const status = err?.response?.status
@@ -131,51 +170,84 @@ const handleSubmit = async () => {
 
 // 다시 입장하기 (세션 정보 삭제)
 const handleLogout = () => {
+  stopPolling()
   localStorage.removeItem('careerlink_counselor_session')
   counselorSessionInfo.value = null
   hasEntered.value = false
   receivedConsultations.value = []
   acceptedConsultations.value = []
   inProgressConsultations.value = []
+}
 
+// 백그라운드 폴링 관리
+const startPolling = () => {
+  stopPolling()
+  pollingInterval = setInterval(async () => {
+    if (hasEntered.value && counselorSessionInfo.value) {
+      await loadDashboard(true)
+    }
+  }, 3000)
+}
+
+const stopPolling = () => {
   if (pollingInterval !== null) {
     clearInterval(pollingInterval)
     pollingInterval = null
   }
 }
 
-// 대시보드 로드
-const loadDashboard = async () => {
+// 대시보드 로드 (isBackground: 백그라운드 자동 갱신 여부)
+const loadDashboard = async (isBackground = false) => {
   if (!counselorSessionInfo.value) return
 
-  isLoadingDashboard.value = true
+  if (!isBackground) {
+    isLoadingDashboard.value = true
+  }
   dashboardErrorMessage.value = ''
 
   try {
-    // RECEIVED 상태 조회
-    const received = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'RECEIVED')
+    const [received, accepted, inProgress] = await Promise.all([
+      getCounselorConsultations(counselorSessionInfo.value.typeId, 'RECEIVED'),
+      getCounselorConsultations(counselorSessionInfo.value.typeId, 'ACCEPTED'),
+      getCounselorConsultations(counselorSessionInfo.value.typeId, 'IN_PROGRESS'),
+    ])
+
+    const currentReceivedIds = new Set(received.map((item) => String(item.id)))
+
+    // 최초 로드가 아니면서 새로운 대기 접수 건이 들어왔을 때 소리 알림 재생
+    if (knownReceivedIds.value.size > 0) {
+      const hasNewArrival = received.some((item) => !knownReceivedIds.value.has(String(item.id)))
+      if (hasNewArrival) {
+        playNotificationSound()
+      }
+    }
+
+    knownReceivedIds.value = currentReceivedIds
     receivedConsultations.value = received
-
-    // ACCEPTED 상태 조회
-    const accepted = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'ACCEPTED')
     acceptedConsultations.value = accepted
-
-    // IN_PROGRESS 상태 조회
-    const inProgress = await getCounselorConsultations(counselorSessionInfo.value.typeId, 'IN_PROGRESS')
     inProgressConsultations.value = inProgress
   } catch (error: unknown) {
-    const err = error as any
-    const status = err?.response?.status
+    if (!isBackground) {
+      const err = error as any
+      const status = err?.response?.status
 
-    if (status === 404) {
-      dashboardErrorMessage.value = '상담 유형을 찾을 수 없습니다'
-    } else {
-      dashboardErrorMessage.value = '접수 목록을 불러올 수 없습니다'
+      if (status === 404) {
+        dashboardErrorMessage.value = '상담 유형을 찾을 수 없습니다'
+      } else {
+        dashboardErrorMessage.value = '접수 목록을 불러올 수 없습니다'
+      }
     }
     console.error('Failed to load consultations:', error)
   } finally {
-    isLoadingDashboard.value = false
+    if (!isBackground) {
+      isLoadingDashboard.value = false
+    }
   }
+}
+
+// 수동 새로고침
+const handleManualRefresh = () => {
+  loadDashboard(false)
 }
 
 // 상담 수락 (RECEIVED -> ACCEPTED)
@@ -293,8 +365,9 @@ onMounted(async () => {
     if (storedSession) {
       counselorSessionInfo.value = JSON.parse(storedSession)
       hasEntered.value = true
-      // 세션이 있으면 대시보드 로드
+      // 세션이 있으면 대시보드 로드 및 백그라운드 폴링 시작
       await loadDashboard()
+      startPolling()
     }
 
     // 상담 유형 로드
@@ -478,18 +551,29 @@ const isRefreshDisabled = computed(() => {
 
         <!-- 접수 목록 영역 -->
         <div v-if="!isLoadingDashboard || receivedConsultations.length > 0 || acceptedConsultations.length > 0 || inProgressConsultations.length > 0" class="counselor-dashboard">
-          <!-- 새로고침 버튼 -->
+          <!-- 새로고침 및 소리 알림 버튼 -->
           <div class="dashboard-header">
             <h2 class="dashboard-title">접수 현황</h2>
-            <button
-              type="button"
-              class="btn btn-small btn-secondary"
-              @click="loadDashboard"
-              :disabled="isRefreshDisabled"
-            >
-              <span v-if="!isLoadingDashboard">새로고침</span>
-              <span v-else>로딩 중...</span>
-            </button>
+            <div class="dashboard-header__actions">
+              <button
+                type="button"
+                class="btn btn-small"
+                :class="isSoundEnabled ? 'btn-secondary' : 'btn-outline'"
+                @click="isSoundEnabled = !isSoundEnabled"
+              >
+                <span v-if="isSoundEnabled">🔔 소리알림 켜짐</span>
+                <span v-else>🔕 소리알림 꺼짐</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-small btn-secondary"
+                @click="handleManualRefresh"
+                :disabled="isRefreshDisabled"
+              >
+                <span v-if="!isLoadingDashboard">새로고침</span>
+                <span v-else>로딩 중...</span>
+              </button>
+            </div>
           </div>
 
           <!-- RECEIVED 섹션 -->
@@ -505,23 +589,25 @@ const isRefreshDisabled = computed(() => {
 
             <div v-else class="consultation-items">
               <div v-for="consultation in receivedConsultations" :key="consultation.id" class="consultation-item">
-                <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
-                  <span class="badge badge-received">대기</span>
-                </div>
-                <div class="consultation-item__meta">
+                <div class="consultation-item__info">
+                  <div class="consultation-item__main">
+                    <span class="consultation-item__name">{{ consultation.studentName }}</span>
+                    <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
+                    <span class="consultation-item__dot">·</span>
+                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                  </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
                 <div class="consultation-item__actions">
                   <button
                     type="button"
-                    class="btn btn-primary btn-small"
+                    class="btn btn-warning btn-small"
                     @click="handleAcceptConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
                     <span v-if="!processingItemIds.has(consultation.id)">수락</span>
-                    <span v-else>처리 중...</span>
+                    <span v-else>...</span>
                   </button>
                 </div>
               </div>
@@ -541,23 +627,25 @@ const isRefreshDisabled = computed(() => {
 
             <div v-else class="consultation-items">
               <div v-for="consultation in acceptedConsultations" :key="consultation.id" class="consultation-item">
-                <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
-                  <span class="badge badge-accepted">수락완료</span>
-                </div>
-                <div class="consultation-item__meta">
+                <div class="consultation-item__info">
+                  <div class="consultation-item__main">
+                    <span class="consultation-item__name">{{ consultation.studentName }}</span>
+                    <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
+                    <span class="consultation-item__dot">·</span>
+                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                  </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
                 <div class="consultation-item__actions">
                   <button
                     type="button"
-                    class="btn btn-primary btn-small"
+                    class="btn btn-success btn-small"
                     @click="handleStartProgressConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
                     <span v-if="!processingItemIds.has(consultation.id)">상담진행</span>
-                    <span v-else>처리 중...</span>
+                    <span v-else>...</span>
                   </button>
                 </div>
               </div>
@@ -577,23 +665,25 @@ const isRefreshDisabled = computed(() => {
 
             <div v-else class="consultation-items">
               <div v-for="consultation in inProgressConsultations" :key="consultation.id" class="consultation-item">
-                <div class="consultation-item__header">
-                  <div class="consultation-item__name">{{ consultation.studentName }} <span class="consultation-item__phone">({{ consultation.studentPhone }})</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ consultation.typeName }}</span> <span class="consultation-item__type">·</span> <span class="consultation-item__type">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span></div>
-                  <span class="badge badge-in-progress">진행중</span>
-                </div>
-                <div class="consultation-item__meta">
+                <div class="consultation-item__info">
+                  <div class="consultation-item__main">
+                    <span class="consultation-item__name">{{ consultation.studentName }}</span>
+                    <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
+                    <span class="consultation-item__dot">·</span>
+                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                  </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
                 <div class="consultation-item__actions">
                   <button
                     type="button"
-                    class="btn btn-success btn-small"
+                    class="btn btn-primary btn-small"
                     @click="handleCompleteConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
                     <span v-if="!processingItemIds.has(consultation.id)">상담완료</span>
-                    <span v-else>처리 중...</span>
+                    <span v-else>...</span>
                   </button>
                 </div>
               </div>
@@ -830,6 +920,12 @@ const isRefreshDisabled = computed(() => {
   gap: 1rem;
 }
 
+.dashboard-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .dashboard-title {
   margin: 0;
   font-size: 1.25rem;
@@ -873,13 +969,18 @@ const isRefreshDisabled = computed(() => {
 }
 
 .empty-state {
-  padding: 1.5rem 1rem;
-  border: 2px dashed #cbd5e1;
-  border-radius: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.5rem;
   background: #f8fafc;
   text-align: center;
   color: #94a3b8;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
+  box-sizing: border-box;
 }
 
 .empty-state p {
@@ -894,11 +995,16 @@ const isRefreshDisabled = computed(() => {
 }
 
 .consultation-item {
-  padding: 0.6rem 0.875rem;
+  padding: 0.45rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   background: var(--surface-strong);
   transition: all 0.2s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .consultation-item:hover {
@@ -906,54 +1012,64 @@ const isRefreshDisabled = computed(() => {
   box-shadow: 0 2px 8px rgba(29, 78, 216, 0.1);
 }
 
-.consultation-item__header {
+.consultation-item__info {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.consultation-item__main {
+  display: flex;
   align-items: center;
-  margin-bottom: 0.4rem;
-  gap: 0.5rem;
+  gap: 0.375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .consultation-item__name {
   font-weight: 600;
   color: #0f172a;
-  font-size: 0.9375rem;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
 .consultation-item__phone {
   font-weight: 400;
   color: #64748b;
   font-size: 0.8125rem;
-  margin-left: 0.375rem;
+  flex-shrink: 0;
 }
 
-.consultation-item__type {
+.consultation-item__dot {
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.consultation-item__school {
   font-weight: 400;
-  color: #64748b;
-  font-size: 0.8125rem;
-  margin: 0 0.25rem;
-}
-
-.consultation-item__meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.4rem;
-  font-size: 0.8125rem;
   color: #475569;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .consultation-item__time {
-  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
 }
 
 .consultation-item__actions {
   display: flex;
+  align-items: center;
   gap: 0.375rem;
+  flex-shrink: 0;
 }
 
 /* 버튼 */
@@ -972,9 +1088,10 @@ const isRefreshDisabled = computed(() => {
 }
 
 .btn-small {
-  padding: 0.3rem 0.625rem;
-  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
   min-height: auto;
+  white-space: nowrap;
 }
 
 .btn:disabled {
@@ -1015,6 +1132,28 @@ const isRefreshDisabled = computed(() => {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 }
 
+.btn-outline {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+
+.btn-outline:not(:disabled):hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-warning {
+  background: #f97316;
+  color: white;
+}
+
+.btn-warning:not(:disabled):hover {
+  background: #ea580c;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+}
+
 .btn-large {
   width: 100%;
 }
@@ -1026,8 +1165,8 @@ const isRefreshDisabled = computed(() => {
 /* 배지 */
 .badge {
   display: inline-block;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
   background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.75rem;
@@ -1087,28 +1226,6 @@ const isRefreshDisabled = computed(() => {
 
   .consultation-section {
     margin-bottom: 1rem;
-  }
-
-  .consultation-item {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .consultation-item__header {
-    grid-column: 1;
-    margin-bottom: 0;
-  }
-
-  .consultation-item__meta {
-    grid-column: 1;
-    margin-bottom: 0;
-  }
-
-  .consultation-item__actions {
-    grid-column: 2;
-    grid-row: 1 / 3;
   }
 }
 </style>
