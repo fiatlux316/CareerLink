@@ -33,7 +33,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-careerlink}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-careerlink}
     ports:
-      - "8080:8080"
+      - "8090:8080"
 
   frontend:
     build:

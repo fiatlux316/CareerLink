@@ -12,7 +12,45 @@ const isLoading = ref(true)
 const isRefreshing = ref(false)
 const errorMessage = ref('')
 const studentPhone = ref('')
+const previousStatusMap = ref<Map<string, string>>(new Map())
+const isSoundEnabled = ref(true)
 let pollingIntervalId: number | null = null
+
+// Web Audio API 기반 상태 변경 알림음 (C5 -> G5 맑은 알림 차임벨)
+const playNotificationSound = () => {
+  if (!isSoundEnabled.value) return
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const audioCtx = new AudioContextClass()
+
+    const now = audioCtx.currentTime
+    const osc1 = audioCtx.createOscillator()
+    const osc2 = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(523.25, now)
+    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.15)
+
+    osc2.type = 'triangle'
+    osc2.frequency.setValueAtTime(1046.5, now + 0.15)
+
+    gain.gain.setValueAtTime(0.3, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+
+    osc1.connect(gain)
+    osc2.connect(gain)
+    gain.connect(audioCtx.destination)
+
+    osc1.start(now)
+    osc1.stop(now + 0.2)
+    osc2.start(now + 0.15)
+    osc2.stop(now + 0.5)
+  } catch (error) {
+    console.error('Failed to play notification sound:', error)
+  }
+}
 
 // 상태 한글 레이블
 const getStatusLabel = (status: string): string => {
@@ -61,7 +99,31 @@ const fetchConsultations = async (phone: string, isSilent = false) => {
   errorMessage.value = ''
 
   try {
-    consultations.value = await getConsultationsByStudentPhone(phone)
+    const fetched = await getConsultationsByStudentPhone(phone)
+
+    // 기존 데이터가 있고 상태(status)가 변경된 건이 있는지 체크
+    if (previousStatusMap.value.size > 0) {
+      let hasStatusChanged = false
+      for (const item of fetched) {
+        const prevStatus = previousStatusMap.value.get(String(item.id))
+        if (prevStatus && prevStatus !== item.status) {
+          hasStatusChanged = true
+          break
+        }
+      }
+
+      if (hasStatusChanged) {
+        playNotificationSound()
+      }
+    }
+
+    const nextStatusMap = new Map<string, string>()
+    for (const item of fetched) {
+      nextStatusMap.set(String(item.id), item.status)
+    }
+
+    previousStatusMap.value = nextStatusMap
+    consultations.value = fetched
   } catch (error: unknown) {
     const err = error as any
     if (err?.response?.status === 400) {
@@ -150,16 +212,28 @@ onUnmounted(() => {
         <span class="badge">학생 현황</span>
         <div class="list-view__title-row">
           <h1 class="list-view__title">내 상담 목록</h1>
-          <button
-            v-if="studentPhone"
-            class="btn btn-small btn-secondary"
-            @click="handleManualRefresh"
-            :disabled="isRefreshing || isLoading"
-            aria-label="상담 목록 새로고침"
-          >
-            <span v-if="!isRefreshing">🔄 새로고침</span>
-            <span v-else>갱신 중...</span>
-          </button>
+          <div class="list-view__actions">
+            <button
+              v-if="studentPhone"
+              type="button"
+              class="btn btn-small"
+              :class="isSoundEnabled ? 'btn-secondary' : 'btn-outline'"
+              @click="isSoundEnabled = !isSoundEnabled"
+            >
+              <span v-if="isSoundEnabled">🔔 소리알림 켜짐</span>
+              <span v-else>🔕 소리알림 꺼짐</span>
+            </button>
+            <button
+              v-if="studentPhone"
+              class="btn btn-small btn-secondary"
+              @click="handleManualRefresh"
+              :disabled="isRefreshing || isLoading"
+              aria-label="상담 목록 새로고침"
+            >
+              <span v-if="!isRefreshing">🔄 새로고침</span>
+              <span v-else>갱신 중...</span>
+            </button>
+          </div>
         </div>
         <p class="list-view__subtitle">접수하신 상담 목록을 확인하세요</p>
       </div>
@@ -454,6 +528,30 @@ onUnmounted(() => {
   background: #1e40af;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(29, 78, 216, 0.3);
+}
+
+.list-view__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  min-height: auto;
+  white-space: nowrap;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+
+.btn-outline:not(:disabled):hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .btn-secondary {

@@ -18,3 +18,5 @@ backend/bin/
 # runtime artifacts
 backend/data/
 *.log
+
+*.tar
