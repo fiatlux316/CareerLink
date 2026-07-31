@@ -46,7 +46,7 @@ class FullConsultationFlowIntegrationTest {
 		mockMvc.perform(get("/api/types"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(5)))
-			.andExpect(jsonPath("$[0].name", is("상담유형1")));
+			.andExpect(jsonPath("$[0].name", is("고상해")));
 
 		String studentEnterResponseBody = mockMvc.perform(post("/api/students/enter")
 				.contentType(MediaType.APPLICATION_JSON)

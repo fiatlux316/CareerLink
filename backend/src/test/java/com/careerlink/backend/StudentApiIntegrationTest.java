@@ -40,7 +40,7 @@ class StudentApiIntegrationTest {
 		mockMvc.perform(get("/api/types"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(5)))
-			.andExpect(jsonPath("$[0].name", is("상담유형1")));
+			.andExpect(jsonPath("$[0].name", is("고상해")));
 	}
 
 	@Test
@@ -61,6 +61,26 @@ class StudentApiIntegrationTest {
 			.andExpect(jsonPath("$.studentPhone", is("01012345678")))
 			.andExpect(jsonPath("$.schoolType", is("MIDDLE_SCHOOL")))
 			.andExpect(jsonPath("$.grade", is(2)));
+	}
+
+	@Test
+	void enterStudentWithDefaultGradeAndGender() throws Exception {
+		mockMvc.perform(post("/api/students/enter")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "studentName": "김철수",
+					  "studentPhone": "01099998888",
+					  "schoolType": "MIDDLE_HIGH_SCHOOL",
+					  "grade": 0,
+					  "gender": 1
+					}
+					"""))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.studentName", is("김철수")))
+			.andExpect(jsonPath("$.schoolType", is("MIDDLE_HIGH_SCHOOL")))
+			.andExpect(jsonPath("$.grade", is(0)))
+			.andExpect(jsonPath("$.gender", is(1)));
 	}
 
 	@Test
@@ -132,7 +152,7 @@ class StudentApiIntegrationTest {
 			.andExpect(jsonPath("$.studentName", is("홍길동")))
 			.andExpect(jsonPath("$.studentPhone", is("01012345678")))
 			.andExpect(jsonPath("$.typeId", is(typeId.intValue())))
-			.andExpect(jsonPath("$.typeName", is("상담유형1")))
+			.andExpect(jsonPath("$.typeName", is("고상해")))
 			.andExpect(jsonPath("$.status", is("RECEIVED")));
 	}
 

@@ -303,6 +303,11 @@ const hasNoConsultation = computed(() => {
           </div>
 
           <div class="info-item">
+            <span class="info-item__label">상담 테마</span>
+            <span class="info-item__value">{{ consultation.topicName || '-' }}</span>
+          </div>
+
+          <div class="info-item">
             <span class="info-item__label">상담 유형</span>
             <span class="info-item__value">{{ consultation.typeName }}</span>
           </div>

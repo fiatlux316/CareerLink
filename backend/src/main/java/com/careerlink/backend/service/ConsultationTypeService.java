@@ -6,10 +6,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.careerlink.backend.domain.ConsultationTopic;
 import com.careerlink.backend.domain.ConsultationType;
 import com.careerlink.backend.exception.ResourceNotFoundException;
 import com.careerlink.backend.exception.TypeInUseException;
 import com.careerlink.backend.repository.ConsultationRepository;
+import com.careerlink.backend.repository.ConsultationTopicRepository;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
 
 @Service
@@ -17,18 +19,33 @@ import com.careerlink.backend.repository.ConsultationTypeRepository;
 public class ConsultationTypeService {
 
 	private final ConsultationTypeRepository consultationTypeRepository;
+	private final ConsultationTopicRepository consultationTopicRepository;
 	private final ConsultationRepository consultationRepository;
 
 	public ConsultationTypeService(
 		ConsultationTypeRepository consultationTypeRepository,
+		ConsultationTopicRepository consultationTopicRepository,
 		ConsultationRepository consultationRepository
 	) {
 		this.consultationTypeRepository = consultationTypeRepository;
+		this.consultationTopicRepository = consultationTopicRepository;
 		this.consultationRepository = consultationRepository;
 	}
 
 	public List<ConsultationType> getAllTypes() {
 		return consultationTypeRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
+	}
+
+	@Transactional
+	public ConsultationType updateType(Long id, Long topicId, String name, String description) {
+		ConsultationType consultationType = consultationTypeRepository.findById(id)
+			.orElseThrow(() -> new ResourceNotFoundException("ConsultationType", id));
+		ConsultationTopic topic = consultationTopicRepository.findById(topicId)
+			.orElseThrow(() -> new ResourceNotFoundException("ConsultationTopic", topicId));
+
+		consultationType.update(topic, name, description);
+
+		return consultationTypeRepository.saveAndFlush(consultationType);
 	}
 
 	@Transactional
@@ -41,8 +58,17 @@ public class ConsultationTypeService {
 	}
 
 	@Transactional
+	public ConsultationType createType(Long topicId, String name, String description) {
+		ConsultationTopic topic = consultationTopicRepository.findById(topicId)
+			.orElseThrow(() -> new ResourceNotFoundException("ConsultationTopic", topicId));
+		return consultationTypeRepository.saveAndFlush(new ConsultationType(topic, name, description));
+	}
+
+	@Transactional
 	public ConsultationType createType(String name, String description) {
-		return consultationTypeRepository.saveAndFlush(new ConsultationType(name, description));
+		List<ConsultationTopic> topics = consultationTopicRepository.findAll();
+		ConsultationTopic topic = topics.isEmpty() ? null : topics.get(0);
+		return consultationTypeRepository.saveAndFlush(new ConsultationType(topic, name, description));
 	}
 
 	@Transactional

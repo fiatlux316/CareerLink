@@ -177,6 +177,7 @@ class PrdV3ScenarioIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
+					  "topicId": 1,
 					  "name": "%s",
 					  "description": "%s"
 					}

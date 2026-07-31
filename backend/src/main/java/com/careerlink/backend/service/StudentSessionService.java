@@ -19,8 +19,14 @@ public class StudentSessionService {
 	}
 
 	@Transactional
-	public StudentSession enter(String studentName, String studentPhone, SchoolType schoolType, Integer grade) {
-		StudentSession studentSession = new StudentSession(studentName, studentPhone, schoolType, grade);
+	public StudentSession enter(String studentName, String studentPhone, SchoolType schoolType, Integer grade, Integer gender) {
+		StudentSession studentSession = new StudentSession(
+			studentName,
+			studentPhone,
+			schoolType,
+			grade != null ? grade : 0,
+			gender != null ? gender : 0
+		);
 
 		return studentSessionRepository.saveAndFlush(studentSession);
 	}

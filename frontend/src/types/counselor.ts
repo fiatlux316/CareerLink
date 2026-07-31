@@ -14,6 +14,8 @@ export interface CounselorSession {
   id: string
   counselorName: string
   counselorPhone: string
+  topicId?: number
+  topicName?: string
   typeId: number
   typeName: string
   enteredAt: string
@@ -23,6 +25,8 @@ export interface CounselorSession {
  * 로컬스토리지에 저장될 상담사 세션 정보
  */
 export interface CounselorSessionStorage {
+  topicId?: number
+  topicName?: string
   typeId: number
   typeName: string
   counselorName: string

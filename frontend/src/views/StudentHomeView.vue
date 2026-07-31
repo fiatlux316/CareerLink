@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getConsultationTypes, createConsultation } from '../api/consultation'
-import type { ConsultationType, ErrorResponse } from '../types/consultation'
+import { getConsultationTopics, getConsultationTypes, createConsultation } from '../api/consultation'
+import type { ConsultationType, ConsultationTopic, ErrorResponse } from '../types/consultation'
 
 const router = useRouter()
 
 // 상태 관리
+const topics = ref<ConsultationTopic[]>([])
 const types = ref<ConsultationType[]>([])
+const selectedTopicId = ref<number>(0)
 const isLoadingTypes = ref(true)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
@@ -15,11 +17,19 @@ const fieldErrors = ref<Record<string, string>>({})
 const studentSessionId = ref(0)
 const studentName = ref('')
 const studentPhone = ref('')
-const lastConsultationInfo = ref<{ id: string; typeName: string } | null>(null)
+const lastConsultationInfo = ref<{ id: string; topicName?: string; typeName: string } | null>(null)
 
 // 폼 데이터
 const formData = ref({
   typeId: 0,
+})
+
+// 필터링된 상담 유형
+const filteredTypes = computed(() => {
+  if (selectedTopicId.value === 0) {
+    return types.value
+  }
+  return types.value.filter((t) => t.topicId === selectedTopicId.value)
 })
 
 // 클라이언트 사이드 유효성 검증
@@ -56,6 +66,7 @@ const handleSubmit = async () => {
     // 마지막 신청 정보 표시
     lastConsultationInfo.value = {
       id: consultation.id,
+      topicName: consultation.topicName,
       typeName: consultation.typeName,
     }
 
@@ -108,7 +119,23 @@ onMounted(async () => {
   studentPhone.value = savedPhone
 
   try {
-    types.value = await getConsultationTypes()
+    const [typesResult, topicsResult] = await Promise.allSettled([
+      getConsultationTypes(),
+      getConsultationTopics(),
+    ])
+
+    if (typesResult.status === 'fulfilled') {
+      types.value = typesResult.value
+    } else {
+      console.error('Failed to load consultation types:', typesResult.reason)
+      errorMessage.value = '상담 유형을 불러올 수 없습니다'
+    }
+
+    if (topicsResult.status === 'fulfilled') {
+      topics.value = topicsResult.value
+    } else {
+      console.warn('Failed to load consultation topics:', topicsResult.reason)
+    }
   } catch (error) {
     console.error('Failed to load consultation types:', error)
     errorMessage.value = '상담 유형을 불러올 수 없습니다'
@@ -167,7 +194,7 @@ const handleViewDetails = (id: string) => {
           <span class="completion-alert__icon">✓</span>
           <div class="completion-alert__text">
             <div class="completion-alert__title">
-              신청 완료: {{ lastConsultationInfo.typeName }}
+              신청 완료: <span v-if="lastConsultationInfo.topicName">[{{ lastConsultationInfo.topicName }}] </span>{{ lastConsultationInfo.typeName }}
             </div>
             <div class="completion-alert__actions">
               <button
@@ -187,17 +214,42 @@ const handleViewDetails = (id: string) => {
 
       <!-- 상담 유형 로딩 -->
       <div v-if="isLoadingTypes" class="home-view__loading">
-        <p>상담 유형을 불러오는 중입니다...</p>
+        <p>상담 테마 및 유형을 불러오는 중입니다...</p>
       </div>
 
       <!-- 폼 -->
       <form v-if="!isLoadingTypes" @submit.prevent="handleSubmit" class="home-view__form">
-        <!-- 상담 유형 선택 -->
+        <!-- 1depth 상담 테마 선택 -->
+        <fieldset v-if="topics.length > 0" class="form-group">
+          <legend class="form-label">상담 테마 (1depth)</legend>
+          <div class="topic-tabs">
+            <button
+              type="button"
+              class="topic-tab-btn"
+              :class="{ active: selectedTopicId === 0 }"
+              @click="selectedTopicId = 0"
+            >
+              전체
+            </button>
+            <button
+              v-for="topic in topics"
+              :key="topic.id"
+              type="button"
+              class="topic-tab-btn"
+              :class="{ active: selectedTopicId === topic.id }"
+              @click="selectedTopicId = topic.id"
+            >
+              {{ topic.name }}
+            </button>
+          </div>
+        </fieldset>
+
+        <!-- 2depth 상담 유형 선택 -->
         <fieldset class="form-group">
-          <legend class="form-label">상담 유형</legend>
+          <legend class="form-label">상담 유형 (2depth)</legend>
           <div class="consultation-types">
             <label
-              v-for="type in types"
+              v-for="type in filteredTypes"
               :key="type.id"
               class="consultation-type-item"
               :class="{ active: formData.typeId === type.id }"
@@ -210,7 +262,10 @@ const handleViewDetails = (id: string) => {
                 class="consultation-type-input"
               />
               <div class="consultation-type-content">
-                <div class="consultation-type-name">{{ type.name }}</div>
+                <div class="consultation-type-header">
+                  <span class="topic-badge">{{ type.topicName || '상담테마' }}</span>
+                  <span class="consultation-type-name">{{ type.name }}</span>
+                </div>
                 <div class="consultation-type-description">{{ type.description }}</div>
               </div>
             </label>
@@ -218,9 +273,11 @@ const handleViewDetails = (id: string) => {
           <div v-if="fieldErrors.typeId" class="form-error">{{ fieldErrors.typeId }}</div>
         </fieldset>
 
-        <!-- 선택된 유형 설명 (모바일용) -->
+        <!-- 선택된 유형 설명 -->
         <div v-if="selectedType" class="selected-type-info">
-          <strong>선택된 상담:</strong> {{ selectedType.name }}
+          <strong>선택된 상담:</strong>
+          <span class="topic-badge" style="margin-left: 0.5rem; margin-right: 0.25rem;">{{ selectedType.topicName }}</span>
+          {{ selectedType.name }}
         </div>
 
         <!-- 제출 버튼 -->
@@ -453,6 +510,54 @@ const handleViewDetails = (id: string) => {
   background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.8125rem;
+}
+
+.topic-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.topic-tab-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: white;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topic-tab-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.topic-tab-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.2);
+}
+
+.consultation-type-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.topic-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.375rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* 버튼 */

@@ -34,8 +34,11 @@ public class StudentSession {
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	private SchoolType schoolType;
 
-	@Column(name = "grade", nullable = false)
-	private Integer grade;
+	@Column(name = "grade", nullable = false, columnDefinition = "integer default 0")
+	private Integer grade = 0;
+
+	@Column(name = "gender", nullable = false, columnDefinition = "integer default 0")
+	private Integer gender = 0;
 
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
@@ -47,10 +50,15 @@ public class StudentSession {
 	}
 
 	public StudentSession(String studentName, String studentPhone, SchoolType schoolType, Integer grade) {
+		this(studentName, studentPhone, schoolType, grade, 0);
+	}
+
+	public StudentSession(String studentName, String studentPhone, SchoolType schoolType, Integer grade, Integer gender) {
 		this.studentName = studentName;
 		this.studentPhone = studentPhone;
 		this.schoolType = schoolType;
-		this.grade = grade;
+		this.grade = grade != null ? grade : 0;
+		this.gender = gender != null ? gender : 0;
 	}
 
 	@PrePersist
@@ -58,6 +66,12 @@ public class StudentSession {
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
 		this.enteredAt = now;
+		if (this.grade == null) {
+			this.grade = 0;
+		}
+		if (this.gender == null) {
+			this.gender = 0;
+		}
 	}
 
 	public Long getId() {
@@ -77,7 +91,11 @@ public class StudentSession {
 	}
 
 	public Integer getGrade() {
-		return grade;
+		return grade != null ? grade : 0;
+	}
+
+	public Integer getGender() {
+		return gender != null ? gender : 0;
 	}
 
 	public LocalDateTime getCreatedAt() {

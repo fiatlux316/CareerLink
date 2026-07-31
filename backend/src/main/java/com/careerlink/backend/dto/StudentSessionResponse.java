@@ -10,6 +10,7 @@ public record StudentSessionResponse(
 	String studentPhone,
 	String schoolType,
 	Integer grade,
+	Integer gender,
 	LocalDateTime enteredAt
 ) {
 	public static StudentSessionResponse from(StudentSession studentSession) {
@@ -19,6 +20,7 @@ public record StudentSessionResponse(
 			studentSession.getStudentPhone(),
 			studentSession.getSchoolType().name(),
 			studentSession.getGrade(),
+			studentSession.getGender(),
 			studentSession.getEnteredAt()
 		);
 	}

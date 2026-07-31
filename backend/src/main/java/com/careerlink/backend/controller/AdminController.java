@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.careerlink.backend.dto.ConsultationResponse;
+import com.careerlink.backend.dto.ConsultationTopicResponse;
 import com.careerlink.backend.dto.ConsultationTypeCreateRequest;
 import com.careerlink.backend.dto.ConsultationTypeResponse;
 import com.careerlink.backend.dto.ConsultationTypeUpdateRequest;
 import com.careerlink.backend.service.ConsultationService;
+import com.careerlink.backend.service.ConsultationTopicService;
 import com.careerlink.backend.service.ConsultationTypeService;
 
 import jakarta.validation.Valid;
@@ -29,12 +31,26 @@ import jakarta.validation.constraints.Positive;
 @RequestMapping("/api/admin")
 public class AdminController {
 
+	private final ConsultationTopicService consultationTopicService;
 	private final ConsultationTypeService consultationTypeService;
 	private final ConsultationService consultationService;
 
-	public AdminController(ConsultationTypeService consultationTypeService, ConsultationService consultationService) {
+	public AdminController(
+		ConsultationTopicService consultationTopicService,
+		ConsultationTypeService consultationTypeService,
+		ConsultationService consultationService
+	) {
+		this.consultationTopicService = consultationTopicService;
 		this.consultationTypeService = consultationTypeService;
 		this.consultationService = consultationService;
+	}
+
+	@GetMapping("/topics")
+	public List<ConsultationTopicResponse> getTopics() {
+		return consultationTopicService.getAllTopics()
+			.stream()
+			.map(ConsultationTopicResponse::from)
+			.toList();
 	}
 
 	@GetMapping("/types")
@@ -48,7 +64,7 @@ public class AdminController {
 	@PostMapping("/types")
 	public ResponseEntity<ConsultationTypeResponse> createType(@Valid @RequestBody ConsultationTypeCreateRequest request) {
 		ConsultationTypeResponse response = ConsultationTypeResponse.from(
-			consultationTypeService.createType(request.name(), request.description())
+			consultationTypeService.createType(request.topicId(), request.name(), request.description())
 		);
 
 		return ResponseEntity
@@ -62,7 +78,7 @@ public class AdminController {
 		@Valid @RequestBody ConsultationTypeUpdateRequest request
 	) {
 		return ConsultationTypeResponse.from(
-			consultationTypeService.updateType(id, request.name(), request.description())
+			consultationTypeService.updateType(id, request.topicId(), request.name(), request.description())
 		);
 	}
 
@@ -80,4 +96,3 @@ public class AdminController {
 			.toList();
 	}
 }
-

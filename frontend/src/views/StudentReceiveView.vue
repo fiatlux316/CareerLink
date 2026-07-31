@@ -14,8 +14,9 @@ const fieldErrors = ref<Record<string, string>>({})
 const formData = ref({
   studentName: '',
   studentPhone: '',
-  schoolType: '' as SchoolType | '',
+  schoolType: 'MIDDLE_HIGH_SCHOOL' as SchoolType,
   grade: 0,
+  gender: 0,
 })
 
 // 핸드폰 번호 유효성 검증 (010-1234-5678 또는 01012345678 형식)
@@ -39,19 +40,6 @@ const validateForm = (): boolean => {
     isValid = false
   } else if (!validatePhoneNumber(formData.value.studentPhone)) {
     fieldErrors.value.studentPhone = '휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)'
-    isValid = false
-  }
-
-  if (!formData.value.schoolType) {
-    fieldErrors.value.schoolType = '학교를 선택해주세요'
-    isValid = false
-  }
-
-  if (!formData.value.grade) {
-    fieldErrors.value.grade = '학년을 선택해주세요'
-    isValid = false
-  } else if (formData.value.grade < 1 || formData.value.grade > 3) {
-    fieldErrors.value.grade = '학년은 1학년 ~ 3학년만 선택 가능합니다'
     isValid = false
   }
 
@@ -85,8 +73,9 @@ const handleSubmit = async () => {
     const studentSession = await enterStudent({
       studentName: formData.value.studentName,
       studentPhone: formData.value.studentPhone,
-      schoolType: formData.value.schoolType as SchoolType,
+      schoolType: formData.value.schoolType,
       grade: formData.value.grade,
+      gender: formData.value.gender,
     })
 
     // localStorage에 학생 정보 저장
@@ -185,76 +174,50 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 학교 선택 -->
+        <!-- 학교 구분 선택 -->
         <div class="form-group">
-          <label class="form-label">학교 · 학년</label>
-          <fieldset class="school-grade-group">
-            <div class="school-options">
-              <label class="radio-item">
-                <input
-                  v-model="formData.schoolType"
-                  type="radio"
-                  value="MIDDLE_SCHOOL"
-                  name="schoolType"
-                  :disabled="isSubmitting"
-                  class="radio-input"
-                />
-                <span class="radio-label">중학교</span>
-              </label>
-              <label class="radio-item">
-                <input
-                  v-model="formData.schoolType"
-                  type="radio"
-                  value="HIGH_SCHOOL"
-                  name="schoolType"
-                  :disabled="isSubmitting"
-                  class="radio-input"
-                />
-                <span class="radio-label">고등학교</span>
-              </label>
-            </div>
-            <div class="grade-options">
-              <label class="radio-item">
-                <input
-                  v-model.number="formData.grade"
-                  type="radio"
-                  :value="1"
-                  name="grade"
-                  :disabled="isSubmitting"
-                  class="radio-input"
-                />
-                <span class="radio-label">1학년</span>
-              </label>
-              <label class="radio-item">
-                <input
-                  v-model.number="formData.grade"
-                  type="radio"
-                  :value="2"
-                  name="grade"
-                  :disabled="isSubmitting"
-                  class="radio-input"
-                />
-                <span class="radio-label">2학년</span>
-              </label>
-              <label class="radio-item">
-                <input
-                  v-model.number="formData.grade"
-                  type="radio"
-                  :value="3"
-                  name="grade"
-                  :disabled="isSubmitting"
-                  class="radio-input"
-                />
-                <span class="radio-label">3학년</span>
-              </label>
-            </div>
-          </fieldset>
-          <div v-if="fieldErrors.schoolType" class="form-error">
-            {{ fieldErrors.schoolType }}
-          </div>
-          <div v-if="fieldErrors.grade" class="form-error">
-            {{ fieldErrors.grade }}
-          </div>
+          <label for="schoolType" class="form-label">학교 구분</label>
+          <select
+            id="schoolType"
+            v-model="formData.schoolType"
+            class="form-input form-select"
+            :disabled="isSubmitting"
+          >
+            <option value="MIDDLE_HIGH_SCHOOL">중/고등학교</option>
+            <option value="MIDDLE_SCHOOL">중학교</option>
+            <option value="HIGH_SCHOOL">고등학교</option>
+          </select>
+        </div>
+
+        <!-- 학년 선택 -->
+        <div class="form-group">
+          <label for="grade" class="form-label">학년</label>
+          <select
+            id="grade"
+            v-model.number="formData.grade"
+            class="form-input form-select"
+            :disabled="isSubmitting"
+          >
+            <option :value="0">선택 안함</option>
+            <option :value="1">1학년</option>
+            <option :value="2">2학년</option>
+            <option :value="3">3학년</option>
+          </select>
+        </div>
+
+        <!-- 성별 선택 -->
+        <div class="form-group">
+          <label for="gender" class="form-label">성별</label>
+          <select
+            id="gender"
+            v-model.number="formData.gender"
+            class="form-input form-select"
+            :disabled="isSubmitting"
+          >
+            <option :value="0">선택 안함</option>
+            <option :value="1">남성</option>
+            <option :value="2">여성</option>
+          </select>
         </div>
         <!-- 제출 버튼 -->
         <button

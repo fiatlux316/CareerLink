@@ -290,7 +290,9 @@ onUnmounted(() => {
             @click="handleConsultationClick(consultation.id)"
           >
             <div class="consultation-item__main">
-              <span class="consultation-item__type">{{ consultation.typeName }}</span>
+              <span class="consultation-item__type">
+                <span v-if="consultation.topicName">[{{ consultation.topicName }}] </span>{{ consultation.typeName }}
+              </span>
               <span class="consultation-item__date">{{ formatDate(consultation.createdAt) }}</span>
             </div>
             <div class="consultation-item__meta">

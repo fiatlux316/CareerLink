@@ -29,7 +29,7 @@ public class StudentController {
 	public ResponseEntity<StudentSessionResponse> enter(@Valid @RequestBody StudentEnterRequest request) {
 		SchoolType schoolType = parseSchoolType(request.schoolType());
 		StudentSessionResponse response = StudentSessionResponse.from(
-			studentSessionService.enter(request.studentName(), request.studentPhone(), schoolType, request.grade())
+			studentSessionService.enter(request.studentName(), request.studentPhone(), schoolType, request.grade(), request.gender())
 		);
 
 		return ResponseEntity
@@ -41,7 +41,7 @@ public class StudentController {
 		try {
 			return SchoolType.valueOf(schoolType);
 		} catch (IllegalArgumentException exception) {
-			throw new IllegalArgumentException("schoolType은 MIDDLE_SCHOOL 또는 HIGH_SCHOOL 이어야 합니다.");
+			throw new IllegalArgumentException("schoolType은 MIDDLE_SCHOOL, HIGH_SCHOOL 또는 MIDDLE_HIGH_SCHOOL 이어야 합니다.");
 		}
 	}
 }

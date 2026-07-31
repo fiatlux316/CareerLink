@@ -1,5 +1,13 @@
 import client from './client'
-import type { ConsultationType, Consultation } from '../types/consultation'
+import type { ConsultationType, ConsultationTopic, Consultation } from '../types/consultation'
+
+/**
+ * 상담 테마 목록 조회 (관리자용 1depth)
+ */
+export const getAdminTopics = async (): Promise<ConsultationTopic[]> => {
+  const response = await client.get<ConsultationTopic[]>('/admin/topics')
+  return response.data
+}
 
 /**
  * 상담 유형 목록 조회
@@ -18,7 +26,7 @@ export const getAllConsultationsForAdmin = async (): Promise<Consultation[]> => 
 }
 
 export const createAdminType = async (
-  payload: { name: string; description: string },
+  payload: { topicId: number; name: string; description: string },
 ): Promise<ConsultationType> => {
   const response = await client.post<ConsultationType>('/admin/types', payload)
   return response.data
@@ -29,7 +37,7 @@ export const createAdminType = async (
  */
 export const updateAdminType = async (
   id: number,
-  payload: { name: string; description: string },
+  payload: { topicId: number; name: string; description: string },
 ): Promise<ConsultationType> => {
   const response = await client.put<ConsultationType>(`/admin/types/${id}`, payload)
   return response.data

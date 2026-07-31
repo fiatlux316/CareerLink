@@ -63,16 +63,24 @@ const getStatusProgress = (status: string): number => {
   return progress[status] || 0
 }
 
-// 학교 타입 포맷팅
-const formatSchoolType = (schoolType: string): string => {
-  switch (schoolType) {
-    case 'MIDDLE_SCHOOL':
-      return '중학교'
-    case 'HIGH_SCHOOL':
-      return '고등학교'
-    default:
-      return schoolType
+// 학교, 학년 및 성별 정보 포맷팅 (0인 경우 노출하지 않음)
+const formatStudentInfo = (schoolType: string, grade?: number, gender?: number): string => {
+  let typeLabel = '중/고등학교'
+  if (schoolType === 'MIDDLE_SCHOOL') typeLabel = '중학교'
+  if (schoolType === 'HIGH_SCHOOL') typeLabel = '고등학교'
+  if (schoolType === 'MIDDLE_HIGH_SCHOOL') typeLabel = '중/고등학교'
+
+  const parts = [typeLabel]
+  if (grade && grade > 0) {
+    parts.push(`${grade}학년`)
   }
+  if (gender === 1) {
+    parts.push('남')
+  } else if (gender === 2) {
+    parts.push('여')
+  }
+
+  return parts.join(' ')
 }
 
 // 날짜 포맷팅
@@ -319,10 +327,15 @@ onUnmounted(() => {
           </div>
 
           <div class="info-row">
-            <span class="info-row__label">학교 / 학년</span>
+            <span class="info-row__label">학생 정보</span>
             <span class="info-row__value">
-              {{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년
+              {{ formatStudentInfo(consultation.schoolType, consultation.grade, consultation.gender) }}
             </span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-row__label">상담 테마</span>
+            <span class="info-row__value">{{ consultation.topicName || '-' }}</span>
           </div>
 
           <div class="info-row">

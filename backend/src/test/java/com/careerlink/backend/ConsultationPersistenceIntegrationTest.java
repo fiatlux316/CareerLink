@@ -40,7 +40,7 @@ class ConsultationPersistenceIntegrationTest {
 		assertThat(consultationTypes).hasSize(5);
 		assertThat(consultationTypes)
 			.extracting(ConsultationType::getName)
-			.containsExactly("상담유형1", "상담유형2", "상담유형3", "상담유형4", "상담유형5");
+			.containsExactly("고상해", "수비학", "타로", "학과탐색", "직업적성");
 	}
 
 	@Test

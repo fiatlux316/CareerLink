@@ -51,7 +51,7 @@ class CounselorApiIntegrationTest {
 			.andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/counselor/enter/")))
 			.andExpect(jsonPath("$.counselorName", is("상담사A")))
 			.andExpect(jsonPath("$.typeId", is(typeId.intValue())))
-			.andExpect(jsonPath("$.typeName", is("상담유형1")));
+			.andExpect(jsonPath("$.typeName", is("고상해")));
 	}
 
 	@Test

@@ -40,7 +40,7 @@ class AdminApiIntegrationTest {
 		mockMvc.perform(get("/api/admin/types"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(5)))
-				.andExpect(jsonPath("$[0].name", is("상담유형1")));
+				.andExpect(jsonPath("$[0].name", is("고상해")));
 	}
 
 	@Test
@@ -49,6 +49,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "진로 상담",
 						  "description": "진로 및 학업 관련 상담"
 						}
@@ -65,6 +66,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "신규 유형",
 						  "description": "신규 유형 설명"
 						}
@@ -82,6 +84,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "확장 유형",
 						  "description": "추가 생성 후 수정"
 						}
@@ -97,6 +100,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "확장 유형 수정",
 						  "description": "범위 제약 제거 확인"
 						}
@@ -112,6 +116,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "이름",
 						  "description": "설명"
 						}
@@ -126,6 +131,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "",
 						  "description": "설명"
 						}
@@ -141,6 +147,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "생활 상담",
 						  "description": "학교 생활 관련 상담"
 						}
@@ -160,6 +167,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "삭제 대상",
 						  "description": "참조 없음"
 						}
@@ -186,6 +194,7 @@ class AdminApiIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "topicId": 1,
 						  "name": "삭제 불가",
 						  "description": "참조 있음"
 						}

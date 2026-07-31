@@ -1,8 +1,16 @@
 import client from './client'
-import type { ConsultationType, Consultation, ConsultationCreatePayload } from '../types/consultation'
+import type { ConsultationType, ConsultationTopic, Consultation, ConsultationCreatePayload } from '../types/consultation'
 
 /**
- * 상담 유형 목록 조회
+ * 상담 테마 목록 조회 (1depth)
+ */
+export const getConsultationTopics = async (): Promise<ConsultationTopic[]> => {
+  const response = await client.get<ConsultationTopic[]>('/topics')
+  return response.data
+}
+
+/**
+ * 상담 유형 목록 조회 (2depth)
  */
 export const getConsultationTypes = async (): Promise<ConsultationType[]> => {
   const response = await client.get<ConsultationType[]>('/types')

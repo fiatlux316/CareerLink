@@ -2,15 +2,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   getAdminTypes,
+  getAdminTopics,
   getAllConsultationsForAdmin,
   createAdminType,
   updateAdminType,
   deleteAdminType,
 } from '../api/admin'
-import type { ConsultationType, Consultation, ErrorResponse } from '../types/consultation'
+import type { ConsultationType, ConsultationTopic, Consultation, ErrorResponse } from '../types/consultation'
 
 const activeTab = ref<'consultations' | 'types'>('consultations')
 const types = ref<ConsultationType[]>([])
+const topics = ref<ConsultationTopic[]>([])
 const consultations = ref<Consultation[]>([])
 const isLoadingTypes = ref(true)
 const isLoadingConsultations = ref(true)
@@ -116,11 +118,13 @@ const clearSearchFilter = () => {
 }
 
 const createFormData = ref({
+  topicId: '' as number | '',
   name: '',
   description: '',
 })
 
 const editFormData = ref({
+  topicId: 1 as number,
   name: '',
   description: '',
 })
@@ -157,15 +161,23 @@ const getStatusLabel = (status: string) => {
   }
 }
 
-const formatSchoolType = (schoolType: string): string => {
-  switch (schoolType) {
-    case 'MIDDLE_SCHOOL':
-      return '중학교'
-    case 'HIGH_SCHOOL':
-      return '고등학교'
-    default:
-      return schoolType
+const formatStudentInfo = (schoolType: string, grade?: number, gender?: number): string => {
+  let typeLabel = '중/고등학교'
+  if (schoolType === 'MIDDLE_SCHOOL') typeLabel = '중학교'
+  if (schoolType === 'HIGH_SCHOOL') typeLabel = '고등학교'
+  if (schoolType === 'MIDDLE_HIGH_SCHOOL') typeLabel = '중/고등학교'
+
+  const parts = [typeLabel]
+  if (grade && grade > 0) {
+    parts.push(`${grade}학년`)
   }
+  if (gender === 1) {
+    parts.push('남')
+  } else if (gender === 2) {
+    parts.push('여')
+  }
+
+  return parts.join(' ')
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -199,8 +211,12 @@ const refreshConsultations = async () => {
   }
 }
 
-const validateTypeForm = (payload: { name: string; description: string }) => {
+const validateTypeForm = (payload: { topicId: number | ''; name: string; description: string }) => {
   const errors: Record<string, string> = {}
+
+  if (!payload.topicId) {
+    errors.topicId = '상담 테마(1depth)를 선택해주세요'
+  }
 
   if (!payload.name.trim()) {
     errors.name = '상담 유형명을 입력해주세요'
@@ -215,6 +231,7 @@ const validateTypeForm = (payload: { name: string; description: string }) => {
 
 const resetCreateForm = () => {
   createFormData.value = {
+    topicId: topics.value.length > 0 ? topics.value[0].id : '',
     name: '',
     description: '',
   }
@@ -271,6 +288,7 @@ const applyResponseErrors = (
 const startEdit = (type: ConsultationType) => {
   editingId.value = type.id
   editFormData.value = {
+    topicId: type.topicId || (topics.value.length > 0 ? topics.value[0].id : 1),
     name: type.name,
     description: type.description,
   }
@@ -282,6 +300,7 @@ const cancelEdit = () => {
   editingId.value = null
   editFieldErrors.value = {}
   editFormData.value = {
+    topicId: 1,
     name: '',
     description: '',
   }
@@ -299,6 +318,7 @@ const handleCreate = async () => {
 
   try {
     const created = await createAdminType({
+      topicId: Number(createFormData.value.topicId),
       name: createFormData.value.name,
       description: createFormData.value.description,
     })
@@ -330,6 +350,7 @@ const handleSave = async (typeId: number) => {
 
   try {
     const updated = await updateAdminType(typeId, {
+      topicId: Number(editFormData.value.topicId),
       name: editFormData.value.name,
       description: editFormData.value.description,
     })
@@ -389,14 +410,25 @@ const handleDelete = async (type: ConsultationType) => {
 // 5초 주기로 폴링 시작
 onMounted(async () => {
   try {
-    const [typesData, consultationsData] = await Promise.all([
+    const [typesResult, topicsResult, consultationsResult] = await Promise.allSettled([
       getAdminTypes(),
+      getAdminTopics(),
       getAllConsultationsForAdmin(),
     ])
-    types.value = typesData
-    consultations.value = consultationsData.sort(
-      (a: Consultation, b: Consultation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
+    if (typesResult.status === 'fulfilled') {
+      types.value = typesResult.value
+    }
+    if (topicsResult.status === 'fulfilled') {
+      topics.value = topicsResult.value
+      if (topicsResult.value.length > 0) {
+        createFormData.value.topicId = topicsResult.value[0].id
+      }
+    }
+    if (consultationsResult.status === 'fulfilled') {
+      consultations.value = consultationsResult.value.sort(
+        (a: Consultation, b: Consultation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+    }
   } catch (error) {
     console.error('Failed to load admin data:', error)
     errorMessage.value = '데이터를 불러올 수 없습니다'
@@ -587,7 +619,7 @@ onUnmounted(() => {
                   <td class="td-time">{{ formatDateTime(item.createdAt) }}</td>
                   <td class="td-name">{{ item.studentName }}</td>
                   <td class="td-phone">{{ item.studentPhone }}</td>
-                  <td class="td-school">{{ formatSchoolType(item.schoolType) }} {{ item.grade }}학년</td>
+                  <td class="td-school">{{ formatStudentInfo(item.schoolType, item.grade, item.gender) }}</td>
                   <td class="td-type"><span class="type-tag">{{ item.typeName }}</span></td>
                   <td class="td-status">
                     <span class="status-badge" :class="getStatusBadgeClass(item.status)">
@@ -656,14 +688,33 @@ onUnmounted(() => {
 
             <div class="type-create-panel__form">
               <div class="type-create-panel__field">
-                <label class="type-create-panel__label" for="newTypeName">상담 유형명</label>
+                <label class="type-create-panel__label" for="newTypeTopic">상담 테마 (1depth)</label>
+                <select
+                  id="newTypeTopic"
+                  v-model="createFormData.topicId"
+                  class="form-input form-select"
+                  :class="{ error: createFieldErrors.topicId }"
+                  :disabled="isCreating"
+                >
+                  <option value="" disabled>테마 선택</option>
+                  <option v-for="t in topics" :key="t.id" :value="t.id">
+                    {{ t.name }}
+                  </option>
+                </select>
+                <div v-if="createFieldErrors.topicId" class="form-error">
+                  {{ createFieldErrors.topicId }}
+                </div>
+              </div>
+
+              <div class="type-create-panel__field">
+                <label class="type-create-panel__label" for="newTypeName">상담 유형명 (2depth)</label>
                 <input
                   id="newTypeName"
                   v-model="createFormData.name"
                   type="text"
                   class="form-input"
                   :class="{ error: createFieldErrors.name }"
-                  placeholder="예: 진로 설계 상담"
+                  placeholder="예: 고상해, 수비학"
                   :disabled="isCreating"
                 />
                 <div v-if="createFieldErrors.name" class="form-error">
@@ -706,7 +757,8 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th class="types-table__th types-table__th--id">유형 ID</th>
-                  <th class="types-table__th types-table__th--name">상담 유형명</th>
+                  <th class="types-table__th">상담 테마 (1depth)</th>
+                  <th class="types-table__th types-table__th--name">상담 유형명 (2depth)</th>
                   <th class="types-table__th types-table__th--description">설명</th>
                   <th class="types-table__th types-table__th--actions">작업</th>
                 </tr>
@@ -721,6 +773,27 @@ onUnmounted(() => {
                   <!-- 유형 ID -->
                   <td class="types-table__cell types-table__cell--id">
                     <span class="type-id">{{ type.id }}</span>
+                  </td>
+
+                  <!-- 상담 테마 (1depth) -->
+                  <td class="types-table__cell">
+                    <div v-if="editingId !== type.id" class="type-field">
+                      <span class="status-badge status-badge--accepted">{{ type.topicName || '미지정' }}</span>
+                    </div>
+                    <div v-else class="type-field-edit">
+                      <select
+                        v-model="editFormData.topicId"
+                        class="form-input form-select"
+                        :class="{ error: editFieldErrors.topicId }"
+                      >
+                        <option v-for="t in topics" :key="t.id" :value="t.id">
+                          {{ t.name }}
+                        </option>
+                      </select>
+                      <div v-if="editFieldErrors.topicId" class="form-error">
+                        {{ editFieldErrors.topicId }}
+                      </div>
+                    </div>
                   </td>
 
                   <!-- 상담 유형명 -->

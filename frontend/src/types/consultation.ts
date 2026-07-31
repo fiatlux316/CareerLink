@@ -1,13 +1,24 @@
 /**
  * 학교 타입
  */
-export type SchoolType = 'MIDDLE_SCHOOL' | 'HIGH_SCHOOL'
+export type SchoolType = 'MIDDLE_SCHOOL' | 'HIGH_SCHOOL' | 'MIDDLE_HIGH_SCHOOL'
 
 /**
- * 상담 타입 인터페이스
+ * 상담 테마 (1depth) 인터페이스
+ */
+export interface ConsultationTopic {
+  id: number
+  name: string
+  description?: string
+}
+
+/**
+ * 상담 유형 (2depth) 인터페이스
  */
 export interface ConsultationType {
   id: number
+  topicId?: number
+  topicName?: string
   name: string
   description: string
 }
@@ -20,6 +31,7 @@ export interface StudentEnterPayload {
   studentPhone: string
   schoolType: SchoolType
   grade: number
+  gender: number
 }
 
 /**
@@ -31,6 +43,7 @@ export interface StudentSession {
   studentPhone: string
   schoolType: SchoolType
   grade: number
+  gender: number
   enteredAt: string
 }
 
@@ -52,6 +65,9 @@ export interface Consultation {
   studentPhone: string
   schoolType: SchoolType
   grade: number
+  gender?: number
+  topicId?: number
+  topicName?: string
   typeId: number
   typeName: string
   status: 'RECEIVED' | 'ACCEPTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'

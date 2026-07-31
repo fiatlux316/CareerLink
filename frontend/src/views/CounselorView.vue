@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getConsultationTypes } from '../api/consultation'
+import { getConsultationTopics, getConsultationTypes } from '../api/consultation'
 import { enterCounselor, getCounselorConsultations, acceptConsultation, startProgressConsultation, completeConsultation } from '../api/counselor'
-import type { ConsultationType, ErrorResponse, Consultation } from '../types/consultation'
+import type { ConsultationType, ConsultationTopic, ErrorResponse, Consultation } from '../types/consultation'
 import type { CounselorSessionStorage } from '../types/counselor'
 
 const router = useRouter()
@@ -14,11 +14,21 @@ const handleViewDetail = (consultationId: string) => {
 }
 
 // 상태 관리 - 입장 폼
+const topics = ref<ConsultationTopic[]>([])
 const types = ref<ConsultationType[]>([])
+const selectedTopicId = ref<number>(0)
 const isLoadingTypes = ref(true)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 const fieldErrors = ref<Record<string, string>>({})
+
+// 필터링된 상담 유형
+const filteredTypes = computed(() => {
+  if (selectedTopicId.value === 0) {
+    return types.value
+  }
+  return types.value.filter((t) => t.topicId === selectedTopicId.value)
+})
 
 // 입장 완료 상태
 const hasEntered = ref(false)
@@ -140,6 +150,8 @@ const handleSubmit = async () => {
 
     // localStorage에 상담사 세션 정보 저장
     const sessionInfo: CounselorSessionStorage = {
+      topicId: response.topicId,
+      topicName: response.topicName,
       typeId: response.typeId,
       typeName: response.typeName,
       counselorName: response.counselorName,
@@ -355,16 +367,24 @@ const formatTime = (dateString: string): string => {
   return `${month}/${day} ${hours}:${minutes}`
 }
 
-// 학교 타입 포맷팅
-const formatSchoolType = (schoolType: string): string => {
-  switch (schoolType) {
-    case 'MIDDLE_SCHOOL':
-      return '중학교'
-    case 'HIGH_SCHOOL':
-      return '고등학교'
-    default:
-      return schoolType
+// 학교, 학년 및 성별 정보 포맷팅 (0인 경우 노출하지 않음)
+const formatStudentInfo = (schoolType: string, grade?: number, gender?: number): string => {
+  let typeLabel = '중/고등학교'
+  if (schoolType === 'MIDDLE_SCHOOL') typeLabel = '중학교'
+  if (schoolType === 'HIGH_SCHOOL') typeLabel = '고등학교'
+  if (schoolType === 'MIDDLE_HIGH_SCHOOL') typeLabel = '중/고등학교'
+
+  const parts = [typeLabel]
+  if (grade && grade > 0) {
+    parts.push(`${grade}학년`)
   }
+  if (gender === 1) {
+    parts.push('남')
+  } else if (gender === 2) {
+    parts.push('여')
+  }
+
+  return parts.join(' ')
 }
 
 // 상담 유형 목록 로드 및 대시보드 초기화
@@ -380,8 +400,18 @@ onMounted(async () => {
       startPolling()
     }
 
-    // 상담 유형 로드
-    types.value = await getConsultationTypes()
+    // 상담 테마 및 유형 로드
+    const [typesResult, topicsResult] = await Promise.allSettled([
+      getConsultationTypes(),
+      getConsultationTopics(),
+    ])
+
+    if (typesResult.status === 'fulfilled') {
+      types.value = typesResult.value
+    }
+    if (topicsResult.status === 'fulfilled') {
+      topics.value = topicsResult.value
+    }
   } catch (error) {
     console.error('Failed to load consultation types:', error)
     errorMessage.value = '상담 유형을 불러올 수 없습니다'
@@ -402,11 +432,6 @@ onUnmounted(() => {
   if (pollingInterval !== null) {
     clearInterval(pollingInterval)
   }
-})
-
-// 선택된 상담 유형 정보
-const selectedType = computed(() => {
-  return types.value.find((t) => t.id === formData.value.typeId)
 })
 
 // 제출 버튼 비활성화 여부
@@ -444,12 +469,37 @@ const isRefreshDisabled = computed(() => {
 
         <!-- 폼 -->
         <form v-if="!isLoadingTypes" @submit.prevent="handleSubmit" class="counselor-view__form">
-          <!-- 상담 유형 선택 -->
+          <!-- 1depth 상담 테마 선택 -->
+          <fieldset v-if="topics.length > 0" class="form-group">
+            <legend class="form-label">상담 테마 (1depth)</legend>
+            <div class="topic-tabs">
+              <button
+                type="button"
+                class="topic-tab-btn"
+                :class="{ active: selectedTopicId === 0 }"
+                @click="selectedTopicId = 0"
+              >
+                전체
+              </button>
+              <button
+                v-for="topic in topics"
+                :key="topic.id"
+                type="button"
+                class="topic-tab-btn"
+                :class="{ active: selectedTopicId === topic.id }"
+                @click="selectedTopicId = topic.id"
+              >
+                {{ topic.name }}
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- 2depth 담당 상담 유형 선택 -->
           <fieldset class="form-group">
-            <legend class="form-label">담당 상담 유형</legend>
+            <legend class="form-label">담당 상담 유형 (2depth)</legend>
             <div class="consultation-types">
               <label
-                v-for="type in types"
+                v-for="type in filteredTypes"
                 :key="type.id"
                 class="consultation-type-item"
                 :class="{ active: formData.typeId === type.id }"
@@ -462,7 +512,10 @@ const isRefreshDisabled = computed(() => {
                   class="consultation-type-input"
                 />
                 <div class="consultation-type-content">
-                  <div class="consultation-type-name">{{ type.name }}</div>
+                  <div class="consultation-type-header">
+                    <span class="topic-badge">{{ type.topicName || '상담테마' }}</span>
+                    <span class="consultation-type-name">{{ type.name }}</span>
+                  </div>
                   <div class="consultation-type-description">{{ type.description }}</div>
                 </div>
               </label>
@@ -470,14 +523,9 @@ const isRefreshDisabled = computed(() => {
             <div v-if="fieldErrors.typeId" class="form-error">{{ fieldErrors.typeId }}</div>
           </fieldset>
 
-          <!-- 선택된 유형 설명 (모바일용) -->
-          <div v-if="selectedType" class="selected-type-info">
-            <strong>담당 상담:</strong> {{ selectedType.name }}
-          </div>
-
-          <!-- 이름 입력 -->
+          <!-- 상담사 이름 입력 -->
           <div class="form-group">
-            <label for="counselorName" class="form-label">이름</label>
+            <label class="form-label" for="counselorName">상담사 이름</label>
             <input
               id="counselorName"
               v-model="formData.counselorName"
@@ -485,7 +533,6 @@ const isRefreshDisabled = computed(() => {
               class="form-input"
               :class="{ error: fieldErrors.counselorName }"
               placeholder="상담사 이름을 입력해주세요"
-              autocomplete="name"
               :disabled="isSubmitting"
             />
             <div v-if="fieldErrors.counselorName" class="form-error">
@@ -493,19 +540,19 @@ const isRefreshDisabled = computed(() => {
             </div>
           </div>
 
-          <!-- 휴대폰 번호 입력 -->
+          <!-- 휴대폰 번호 입력 (선택) -->
           <div class="form-group">
-            <label for="counselorPhone" class="form-label">
-              휴대폰 번호 <span class="form-label__optional">(선택)</span>
+            <label class="form-label" for="counselorPhone">
+              휴대폰 번호 <span class="form-label-optional">(선택)</span>
             </label>
             <input
               id="counselorPhone"
-              :value="formData.counselorPhone"
+              v-model="formData.counselorPhone"
               type="tel"
               class="form-input"
               :class="{ error: fieldErrors.counselorPhone }"
-              placeholder="010-1234-5678 (선택 입력)"
-              autocomplete="tel"
+              placeholder="010-1234-5678"
+              maxlength="13"
               :disabled="isSubmitting"
               @input="handlePhoneInput"
             />
@@ -609,7 +656,7 @@ const isRefreshDisabled = computed(() => {
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
                     <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
                     <span class="consultation-item__dot">·</span>
-                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                    <span class="consultation-item__school">{{ formatStudentInfo(consultation.schoolType, consultation.grade, consultation.gender) }}</span>
                   </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
@@ -652,7 +699,7 @@ const isRefreshDisabled = computed(() => {
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
                     <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
                     <span class="consultation-item__dot">·</span>
-                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                    <span class="consultation-item__school">{{ formatStudentInfo(consultation.schoolType, consultation.grade, consultation.gender) }}</span>
                   </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
@@ -695,7 +742,7 @@ const isRefreshDisabled = computed(() => {
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
                     <span class="consultation-item__phone">({{ consultation.studentPhone }})</span>
                     <span class="consultation-item__dot">·</span>
-                    <span class="consultation-item__school">{{ formatSchoolType(consultation.schoolType) }} {{ consultation.grade }}학년</span>
+                    <span class="consultation-item__school">{{ formatStudentInfo(consultation.schoolType, consultation.grade, consultation.gender) }}</span>
                   </div>
                   <span class="consultation-item__time">{{ formatTime(consultation.createdAt) }}</span>
                 </div>
@@ -1199,6 +1246,54 @@ const isRefreshDisabled = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+.topic-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.topic-tab-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topic-tab-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.topic-tab-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.2);
+}
+
+.consultation-type-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.topic-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.375rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .badge-success {
