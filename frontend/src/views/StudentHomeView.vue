@@ -219,9 +219,9 @@ const handleViewDetails = (id: string) => {
 
       <!-- 폼 -->
       <form v-if="!isLoadingTypes" @submit.prevent="handleSubmit" class="home-view__form">
-        <!-- 1depth 상담 테마 선택 -->
+        <!-- 상담 테마 선택 -->
         <fieldset v-if="topics.length > 0" class="form-group">
-          <legend class="form-label">상담 테마 (1depth)</legend>
+          <legend class="form-label">상담 테마</legend>
           <div class="topic-tabs">
             <button
               type="button"
@@ -244,9 +244,9 @@ const handleViewDetails = (id: string) => {
           </div>
         </fieldset>
 
-        <!-- 2depth 상담 유형 선택 -->
+        <!-- 상담 유형 선택 -->
         <fieldset class="form-group">
-          <legend class="form-label">상담 유형 (2depth)</legend>
+          <legend class="form-label">상담 유형</legend>
           <div class="consultation-types">
             <label
               v-for="type in filteredTypes"

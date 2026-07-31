@@ -211,7 +211,7 @@ onUnmounted(() => {
       <div class="list-view__header">
         <span class="badge">학생 현황</span>
         <div class="list-view__title-row">
-          <h1 class="list-view__title">내 상담 목록</h1>
+          <h1 class="list-view__title">상담 목록</h1>
           <div class="list-view__actions">
             <button
               v-if="studentPhone"

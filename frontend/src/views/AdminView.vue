@@ -26,6 +26,7 @@ let pollingInterval: number | null = null
 // 검색 필터 및 페이징 상태
 const searchFilter = ref({
   studentName: '',
+  topicId: '' as string | number,
   typeId: '' as string | number,
   counselorName: '',
 })
@@ -44,6 +45,29 @@ const availableCounselors = computed(() => {
   return Array.from(set).sort()
 })
 
+// 선택된 상담 테마에 따라 동적으로 필터링된 상담 유형 목록 (조회 조건용)
+const filteredSearchTypes = computed(() => {
+  if (searchFilter.value.topicId === '') {
+    return types.value
+  }
+  const selectedTopicIdNum = Number(searchFilter.value.topicId)
+  return types.value.filter((t) => t.topicId === selectedTopicIdNum)
+})
+
+const handleFilterTopicChange = () => {
+  resetPage()
+  if (searchFilter.value.typeId !== '') {
+    const selectedType = types.value.find((t) => t.id === Number(searchFilter.value.typeId))
+    if (
+      selectedType &&
+      searchFilter.value.topicId !== '' &&
+      selectedType.topicId !== Number(searchFilter.value.topicId)
+    ) {
+      searchFilter.value.typeId = ''
+    }
+  }
+}
+
 // 검색 필터링 적용된 상담 목록
 const filteredConsultations = computed(() => {
   return consultations.value.filter((item) => {
@@ -55,7 +79,15 @@ const filteredConsultations = computed(() => {
       return false
     }
 
-    // 2. 상담유형 필터
+    // 2. 상담테마 필터
+    if (
+      searchFilter.value.topicId !== '' &&
+      Number(searchFilter.value.topicId) !== item.topicId
+    ) {
+      return false
+    }
+
+    // 3. 상담유형 필터
     if (
       searchFilter.value.typeId !== '' &&
       Number(searchFilter.value.typeId) !== item.typeId
@@ -63,7 +95,7 @@ const filteredConsultations = computed(() => {
       return false
     }
 
-    // 3. 상담사 필터
+    // 4. 상담사 필터
     if (searchFilter.value.counselorName.trim()) {
       const counselor = item.counselorName || ''
       if (!counselor.toLowerCase().includes(searchFilter.value.counselorName.trim().toLowerCase())) {
@@ -111,6 +143,7 @@ const resetPage = () => {
 const clearSearchFilter = () => {
   searchFilter.value = {
     studentName: '',
+    topicId: '',
     typeId: '',
     counselorName: '',
   }
@@ -215,7 +248,7 @@ const validateTypeForm = (payload: { topicId: number | ''; name: string; descrip
   const errors: Record<string, string> = {}
 
   if (!payload.topicId) {
-    errors.topicId = '상담 테마(1depth)를 선택해주세요'
+    errors.topicId = '상담 테마를 선택해주세요'
   }
 
   if (!payload.name.trim()) {
@@ -529,6 +562,22 @@ onUnmounted(() => {
                 />
               </div>
 
+              <!-- 상담 테마 선택 -->
+              <div class="filter-group">
+                <label for="filterTopicId" class="filter-label">상담 테마</label>
+                <select
+                  id="filterTopicId"
+                  v-model="searchFilter.topicId"
+                  class="form-select"
+                  @change="handleFilterTopicChange"
+                >
+                  <option value="">전체 (모든 테마)</option>
+                  <option v-for="t in topics" :key="t.id" :value="t.id">
+                    {{ t.name }}
+                  </option>
+                </select>
+              </div>
+
               <!-- 상담 유형 선택 -->
               <div class="filter-group">
                 <label for="filterTypeId" class="filter-label">상담 유형</label>
@@ -539,7 +588,7 @@ onUnmounted(() => {
                   @change="resetPage"
                 >
                   <option value="">전체 (모든 유형)</option>
-                  <option v-for="t in types" :key="t.id" :value="t.id">
+                  <option v-for="t in filteredSearchTypes" :key="t.id" :value="t.id">
                     {{ t.name }}
                   </option>
                 </select>
@@ -609,6 +658,7 @@ onUnmounted(() => {
                   <th class="th-name">학생이름</th>
                   <th class="th-phone">학생휴대폰</th>
                   <th class="th-school">학교/학년</th>
+                  <th class="th-topic">상담테마</th>
                   <th class="th-type">상담유형</th>
                   <th class="th-status">상태</th>
                   <th class="th-counselor">상담사</th>
@@ -620,6 +670,7 @@ onUnmounted(() => {
                   <td class="td-name">{{ item.studentName }}</td>
                   <td class="td-phone">{{ item.studentPhone }}</td>
                   <td class="td-school">{{ formatStudentInfo(item.schoolType, item.grade, item.gender) }}</td>
+                  <td class="td-topic"><span class="topic-badge">{{ item.topicName || '-' }}</span></td>
                   <td class="td-type"><span class="type-tag">{{ item.typeName }}</span></td>
                   <td class="td-status">
                     <span class="status-badge" :class="getStatusBadgeClass(item.status)">
@@ -688,7 +739,7 @@ onUnmounted(() => {
 
             <div class="type-create-panel__form">
               <div class="type-create-panel__field">
-                <label class="type-create-panel__label" for="newTypeTopic">상담 테마 (1depth)</label>
+                <label class="type-create-panel__label" for="newTypeTopic">상담 테마</label>
                 <select
                   id="newTypeTopic"
                   v-model="createFormData.topicId"
@@ -707,7 +758,7 @@ onUnmounted(() => {
               </div>
 
               <div class="type-create-panel__field">
-                <label class="type-create-panel__label" for="newTypeName">상담 유형명 (2depth)</label>
+                <label class="type-create-panel__label" for="newTypeName">상담 유형명</label>
                 <input
                   id="newTypeName"
                   v-model="createFormData.name"
@@ -757,8 +808,8 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th class="types-table__th types-table__th--id">유형 ID</th>
-                  <th class="types-table__th">상담 테마 (1depth)</th>
-                  <th class="types-table__th types-table__th--name">상담 유형명 (2depth)</th>
+                  <th class="types-table__th types-table__th--topic">상담 테마</th>
+                  <th class="types-table__th types-table__th--name">상담 유형</th>
                   <th class="types-table__th types-table__th--description">설명</th>
                   <th class="types-table__th types-table__th--actions">작업</th>
                 </tr>
@@ -775,8 +826,8 @@ onUnmounted(() => {
                     <span class="type-id">{{ type.id }}</span>
                   </td>
 
-                  <!-- 상담 테마 (1depth) -->
-                  <td class="types-table__cell">
+                  <!-- 상담 테마 -->
+                  <td class="types-table__cell types-table__cell--topic">
                     <div v-if="editingId !== type.id" class="type-field">
                       <span class="status-badge status-badge--accepted">{{ type.topicName || '미지정' }}</span>
                     </div>
@@ -1019,18 +1070,26 @@ onUnmounted(() => {
 
 .types-table__th--id {
   width: 10%;
+  white-space: nowrap;
+}
+
+.types-table__th--topic {
+  width: 14%;
+  white-space: nowrap;
 }
 
 .types-table__th--name {
-  width: 25%;
+  width: 20%;
+  white-space: nowrap;
 }
 
 .types-table__th--description {
-  width: 45%;
+  width: 40%;
 }
 
 .types-table__th--actions {
-  width: 20%;
+  width: 16%;
+  white-space: nowrap;
 }
 
 .types-table__row {
@@ -1135,13 +1194,18 @@ onUnmounted(() => {
 .type-actions,
 .type-actions-edit {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.375rem;
   justify-content: center;
   align-items: center;
+  white-space: nowrap;
 }
 
-.type-actions-edit {
-  flex-wrap: wrap;
+.type-actions .btn,
+.type-actions-edit .btn {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* 버튼 */
@@ -1276,19 +1340,23 @@ onUnmounted(() => {
   }
 
   .types-table__th--id {
-    width: 8%;
+    width: 10%;
+  }
+
+  .types-table__th--topic {
+    width: 14%;
   }
 
   .types-table__th--name {
-    width: 18%;
+    width: 20%;
   }
 
   .types-table__th--description {
-    width: 54%;
+    width: 40%;
   }
 
   .types-table__th--actions {
-    width: 20%;
+    width: 16%;
   }
 
   .consultations-table {
@@ -1405,28 +1473,29 @@ onUnmounted(() => {
   background: #f8fafc;
 }
 
-.td-time {
-  font-variant-numeric: tabular-nums;
-  color: #475569;
-  font-size: 0.875rem;
+.th-time { width: 13%; white-space: nowrap; }
+.th-name { width: 9%; white-space: nowrap; }
+.th-phone { width: 12%; white-space: nowrap; }
+.th-school { width: 14%; white-space: nowrap; }
+.th-topic { width: 14%; white-space: nowrap; }
+.th-type { width: 18%; white-space: nowrap; }
+.th-status { width: 10%; white-space: nowrap; }
+.th-counselor { width: 10%; white-space: nowrap; }
+
+.td-time, .td-name, .td-phone, .td-school, .td-topic, .td-type, .td-status, .td-counselor {
+  white-space: nowrap;
 }
 
-.td-name {
+.topic-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #0f172a;
-}
-
-.td-phone {
-  color: #475569;
-}
-
-.td-counselor {
-  font-weight: 500;
-}
-
-.td-school {
-  font-weight: 500;
-  color: #0f172a;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .type-tag {
@@ -1438,6 +1507,7 @@ onUnmounted(() => {
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* 상태 배지 */
@@ -1478,7 +1548,7 @@ onUnmounted(() => {
 
 /* 검색 필터 패널 스타일 */
 .search-filter-panel {
-  padding: 1.25rem;
+  padding: 1rem 1.25rem;
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: 0.875rem;
@@ -1488,14 +1558,25 @@ onUnmounted(() => {
 .search-filter-panel__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 @media (min-width: 768px) {
   .search-filter-panel__grid {
-    grid-template-columns: repeat(3, 1fr) auto;
+    grid-template-columns: minmax(100px, 0.75fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) minmax(110px, 1fr) auto;
     align-items: end;
+    gap: 0.625rem;
   }
+}
+
+.search-filter-panel .form-input,
+.search-filter-panel .form-select {
+  height: 2.375rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  box-sizing: border-box;
+  line-height: 1.3;
 }
 
 .filter-group {
@@ -1512,14 +1593,12 @@ onUnmounted(() => {
   font-size: 0.8125rem;
   font-weight: 700;
   color: #334155;
+  white-space: nowrap;
 }
 
 .form-select {
-  padding: 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
   background: white;
-  font-size: 0.9375rem;
   color: #0f172a;
   font-family: inherit;
   transition: all 0.2s ease;
@@ -1533,8 +1612,14 @@ onUnmounted(() => {
 }
 
 .btn-reset {
-  padding: 0.75rem 1rem;
+  height: 2.375rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
   white-space: nowrap;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .filter-summary {
