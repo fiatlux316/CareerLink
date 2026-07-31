@@ -13,6 +13,12 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
 
 	List<Consultation> findByTypeAndStatus(ConsultationType type, ConsultationStatus status);
 
+	List<Consultation> findByTypeAndStatusAndCounselorName(
+		ConsultationType type,
+		ConsultationStatus status,
+		String counselorName
+	);
+
 	List<Consultation> findByStatusAndUpdatedAtBeforeAndMaskedAtIsNull(
 		ConsultationStatus status,
 		LocalDateTime threshold

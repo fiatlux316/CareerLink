@@ -52,9 +52,20 @@ public class ConsultationService {
 	}
 
 	public List<Consultation> findByTypeAndStatus(Long typeId, ConsultationStatus status) {
+		return findByTypeAndStatus(typeId, status, null);
+	}
+
+	public List<Consultation> findByTypeAndStatus(Long typeId, ConsultationStatus status, String counselorName) {
 		ConsultationType consultationType = getConsultationType(typeId);
 
-		return consultationRepository.findByTypeAndStatus(consultationType, status)
+		if (status == ConsultationStatus.RECEIVED || counselorName == null || counselorName.isBlank()) {
+			return consultationRepository.findByTypeAndStatus(consultationType, status)
+				.stream()
+				.map(this::initializeConsultation)
+				.toList();
+		}
+
+		return consultationRepository.findByTypeAndStatusAndCounselorName(consultationType, status, counselorName)
 			.stream()
 			.map(this::initializeConsultation)
 			.toList();
@@ -88,6 +99,14 @@ public class ConsultationService {
 		);
 
 		return initializeConsultation(saved);
+	}
+
+	@Transactional
+	public Consultation cancelAccept(Long consultationId) {
+		Consultation consultation = getConsultation(consultationId);
+		consultation.cancelAccept();
+
+		return initializeConsultation(consultationRepository.saveAndFlush(consultation));
 	}
 
 	@Transactional

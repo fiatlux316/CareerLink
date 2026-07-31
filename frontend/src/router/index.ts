@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import AdminView from '../views/AdminView.vue'
 import CounselorView from '../views/CounselorView.vue'
+import CounselorDetailView from '../views/CounselorDetailView.vue'
 import StudentReceiveView from '../views/StudentReceiveView.vue'
 import StudentHomeView from '../views/StudentHomeView.vue'
 import StudentStatusView from '../views/StudentStatusView.vue'
@@ -39,6 +40,12 @@ const router = createRouter({
       path: '/counselor',
       name: 'counselor',
       component: CounselorView,
+    },
+    {
+      path: '/counselor/status/:id',
+      name: 'counselor-status',
+      component: CounselorDetailView,
+      props: true,
     },
     {
       path: '/admin',

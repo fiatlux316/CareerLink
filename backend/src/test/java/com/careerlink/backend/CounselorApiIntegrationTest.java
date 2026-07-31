@@ -83,6 +83,40 @@ class CounselorApiIntegrationTest {
 	}
 
 	@Test
+	void acceptedConsultationsFilteredByCounselorName() throws Exception {
+		Long typeId = consultationTypeRepository.findAll().get(0).getId();
+		String loc1 = createConsultation("학생A", "01011111111", typeId);
+		String loc2 = createConsultation("학생B", "01022222222", typeId);
+
+		mockMvc.perform(patch(loc1 + "/accept")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "counselorName": "상담사1"
+					}
+					"""))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(patch(loc2 + "/accept")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "counselorName": "상담사2"
+					}
+					"""))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(get("/api/counselor/consultations")
+				.param("typeId", String.valueOf(typeId))
+				.param("status", "ACCEPTED")
+				.param("counselorName", "상담사1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$", hasSize(1)))
+			.andExpect(jsonPath("$[0].studentName", is("학생A")))
+			.andExpect(jsonPath("$[0].counselorName", is("상담사1")));
+	}
+
+	@Test
 	void acceptConsultationChangesStatusToAccepted() throws Exception {
 		Long typeId = consultationTypeRepository.findAll().get(0).getId();
 		String location = createConsultation("학생4", "01044445555", typeId);
@@ -97,6 +131,27 @@ class CounselorApiIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status", is("ACCEPTED")))
 			.andExpect(jsonPath("$.counselorName", is("상담사C")));
+	}
+
+	@Test
+	void cancelAcceptConsultationRevertsStatusToReceived() throws Exception {
+		Long typeId = consultationTypeRepository.findAll().get(0).getId();
+		String location = createConsultation("학생X", "01099998888", typeId);
+
+		mockMvc.perform(patch(location + "/accept")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "counselorName": "상담사X"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status", is("ACCEPTED")));
+
+		mockMvc.perform(patch(location + "/cancel-accept"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status", is("RECEIVED")))
+			.andExpect(jsonPath("$.counselorName").value(org.hamcrest.Matchers.nullValue()));
 	}
 
 	@Test

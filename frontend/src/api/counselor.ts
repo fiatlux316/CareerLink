@@ -18,9 +18,10 @@ export const enterCounselor = async (
 export const getCounselorConsultations = async (
   typeId: number,
   status: string,
+  counselorName?: string,
 ): Promise<Consultation[]> => {
   const response = await client.get<Consultation[]>('/counselor/consultations', {
-    params: { typeId, status },
+    params: { typeId, status, counselorName },
   })
   return response.data
 }
@@ -35,6 +36,14 @@ export const acceptConsultation = async (
   const response = await client.patch<Consultation>(`/consultations/${id}/accept`, {
     counselorName,
   })
+  return response.data
+}
+
+/**
+ * 수락 취소 (ACCEPTED -> RECEIVED)
+ */
+export const cancelAcceptConsultation = async (id: string): Promise<Consultation> => {
+  const response = await client.patch<Consultation>(`/consultations/${id}/cancel-accept`, {})
   return response.data
 }
 

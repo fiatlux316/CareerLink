@@ -67,6 +67,11 @@ public class ConsultationController {
 		return ConsultationResponse.from(consultationService.accept(id, request.counselorName()));
 	}
 
+	@PatchMapping("/{id}/cancel-accept")
+	public ConsultationResponse cancelAcceptConsultation(@PathVariable Long id) {
+		return ConsultationResponse.from(consultationService.cancelAccept(id));
+	}
+
 	@PatchMapping("/{id}/start-progress")
 	public ConsultationResponse startProgressConsultation(@PathVariable Long id) {
 		return ConsultationResponse.from(consultationService.startProgress(id));

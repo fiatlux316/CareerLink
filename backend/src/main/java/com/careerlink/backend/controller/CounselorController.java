@@ -46,9 +46,10 @@ public class CounselorController {
 	@GetMapping("/consultations")
 	public List<ConsultationResponse> getConsultations(
 		@RequestParam Long typeId,
-		@RequestParam(defaultValue = "RECEIVED") ConsultationStatus status
+		@RequestParam(defaultValue = "RECEIVED") ConsultationStatus status,
+		@RequestParam(required = false) String counselorName
 	) {
-		return consultationService.findByTypeAndStatus(typeId, status)
+		return consultationService.findByTypeAndStatus(typeId, status, counselorName)
 			.stream()
 			.map(ConsultationResponse::from)
 			.toList();

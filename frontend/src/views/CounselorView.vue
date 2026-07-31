@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getConsultationTypes } from '../api/consultation'
 import { enterCounselor, getCounselorConsultations, acceptConsultation, startProgressConsultation, completeConsultation } from '../api/counselor'
 import type { ConsultationType, ErrorResponse, Consultation } from '../types/consultation'
 import type { CounselorSessionStorage } from '../types/counselor'
+
+const router = useRouter()
+
+// 상세 페이지 이동
+const handleViewDetail = (consultationId: string) => {
+  router.push(`/counselor/status/${consultationId}`)
+}
 
 // 상태 관리 - 입장 폼
 const types = ref<ConsultationType[]>([])
@@ -206,10 +214,12 @@ const loadDashboard = async (isBackground = false) => {
   dashboardErrorMessage.value = ''
 
   try {
+    const counselorName = counselorSessionInfo.value.counselorName
+
     const [received, accepted, inProgress] = await Promise.all([
       getCounselorConsultations(counselorSessionInfo.value.typeId, 'RECEIVED'),
-      getCounselorConsultations(counselorSessionInfo.value.typeId, 'ACCEPTED'),
-      getCounselorConsultations(counselorSessionInfo.value.typeId, 'IN_PROGRESS'),
+      getCounselorConsultations(counselorSessionInfo.value.typeId, 'ACCEPTED', counselorName),
+      getCounselorConsultations(counselorSessionInfo.value.typeId, 'IN_PROGRESS', counselorName),
     ])
 
     const currentReceivedIds = new Set(received.map((item) => String(item.id)))
@@ -523,7 +533,7 @@ const isRefreshDisabled = computed(() => {
         <!-- 헤더 -->
         <div class="counselor-view__header">
           <span class="badge badge-success">상담사 입장</span>
-          <h1 class="counselor-view__title">입장 완료</h1>
+          <h1 class="counselor-view__title">상담 접수 현황</h1>
           <p class="counselor-view__subtitle">{{ counselorSessionInfo?.counselorName }}님의 상담 접수 현황</p>
         </div>
 
@@ -588,7 +598,12 @@ const isRefreshDisabled = computed(() => {
             </div>
 
             <div v-else class="consultation-items">
-              <div v-for="consultation in receivedConsultations" :key="consultation.id" class="consultation-item">
+              <div
+                v-for="consultation in receivedConsultations"
+                :key="consultation.id"
+                class="consultation-item"
+                @click="handleViewDetail(consultation.id)"
+              >
                 <div class="consultation-item__info">
                   <div class="consultation-item__main">
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
@@ -602,7 +617,7 @@ const isRefreshDisabled = computed(() => {
                   <button
                     type="button"
                     class="btn btn-warning btn-small"
-                    @click="handleAcceptConsultation(consultation.id)"
+                    @click.stop="handleAcceptConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
@@ -626,7 +641,12 @@ const isRefreshDisabled = computed(() => {
             </div>
 
             <div v-else class="consultation-items">
-              <div v-for="consultation in acceptedConsultations" :key="consultation.id" class="consultation-item">
+              <div
+                v-for="consultation in acceptedConsultations"
+                :key="consultation.id"
+                class="consultation-item"
+                @click="handleViewDetail(consultation.id)"
+              >
                 <div class="consultation-item__info">
                   <div class="consultation-item__main">
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
@@ -640,7 +660,7 @@ const isRefreshDisabled = computed(() => {
                   <button
                     type="button"
                     class="btn btn-success btn-small"
-                    @click="handleStartProgressConsultation(consultation.id)"
+                    @click.stop="handleStartProgressConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
@@ -664,7 +684,12 @@ const isRefreshDisabled = computed(() => {
             </div>
 
             <div v-else class="consultation-items">
-              <div v-for="consultation in inProgressConsultations" :key="consultation.id" class="consultation-item">
+              <div
+                v-for="consultation in inProgressConsultations"
+                :key="consultation.id"
+                class="consultation-item"
+                @click="handleViewDetail(consultation.id)"
+              >
                 <div class="consultation-item__info">
                   <div class="consultation-item__main">
                     <span class="consultation-item__name">{{ consultation.studentName }}</span>
@@ -678,7 +703,7 @@ const isRefreshDisabled = computed(() => {
                   <button
                     type="button"
                     class="btn btn-primary btn-small"
-                    @click="handleCompleteConsultation(consultation.id)"
+                    @click.stop="handleCompleteConsultation(consultation.id)"
                     :disabled="processingItemIds.has(consultation.id)"
                     :class="{ loading: processingItemIds.has(consultation.id) }"
                   >
