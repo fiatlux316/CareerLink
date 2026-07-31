@@ -32,7 +32,8 @@ const searchFilter = ref({
 })
 
 const currentPage = ref(1)
-const pageSize = 10
+const pageSize = ref<number>(10)
+const pageSizeOptions = [10, 15, 20, 25, 30]
 
 // 등록되어 있는 고유 상담사 목록 추출 (드롭다운 용)
 const availableCounselors = computed(() => {
@@ -107,15 +108,15 @@ const filteredConsultations = computed(() => {
   })
 })
 
-// 10개씩 페이징 처리된 목록
+// 페이징 처리된 목록
 const paginatedConsultations = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredConsultations.value.slice(start, start + pageSize)
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredConsultations.value.slice(start, start + pageSize.value)
 })
 
 // 총 페이지 수
 const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredConsultations.value.length / pageSize))
+  return Math.max(1, Math.ceil(filteredConsultations.value.length / pageSize.value))
 })
 
 // 네비게이션 표시 페이지 번호 배열 (최대 5개)
@@ -478,7 +479,7 @@ onMounted(async () => {
         (a: Consultation, b: Consultation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
       // currentPage가 totalPages를 초과하면 마지막 페이지로 보정
-      const total = Math.max(1, Math.ceil(filteredConsultations.value.length / pageSize))
+      const total = Math.max(1, Math.ceil(filteredConsultations.value.length / pageSize.value))
       if (currentPage.value > total) {
         currentPage.value = total
       }
@@ -626,21 +627,38 @@ onUnmounted(() => {
 
           <!-- 필터링 결과 통계 및 새로고침 버튼 -->
           <div class="filter-summary">
-            <span>
-              검색 결과 <strong>{{ filteredConsultations.length }}</strong>건
-              <span v-if="filteredConsultations.length !== consultations.length" class="summary-total">
-                (전체 {{ consultations.length }}건 중)
+            <div class="filter-summary__left">
+              <span>
+                검색 결과 <strong>{{ filteredConsultations.length }}</strong>건
+                <span v-if="filteredConsultations.length !== consultations.length" class="summary-total">
+                  (전체 {{ consultations.length }}건 중)
+                </span>
               </span>
-            </span>
-            <button
-              type="button"
-              class="btn btn-secondary btn-refresh"
-              @click="refreshConsultations"
-              :disabled="isLoadingConsultations"
-            >
-              <span v-if="!isLoadingConsultations">새로고침</span>
-              <span v-else>새로고침 중...</span>
-            </button>
+            </div>
+            <div class="filter-summary__right">
+              <div class="page-size-selector">
+                <label for="pageSizeSelectSummary" class="page-size-label">표시 개수:</label>
+                <select
+                  id="pageSizeSelectSummary"
+                  v-model.number="pageSize"
+                  class="form-select page-size-select"
+                  @change="resetPage"
+                >
+                  <option v-for="size in pageSizeOptions" :key="size" :value="size">
+                    {{ size }}개씩
+                  </option>
+                </select>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary btn-refresh"
+                @click="refreshConsultations"
+                :disabled="isLoadingConsultations"
+              >
+                <span v-if="!isLoadingConsultations">새로고침</span>
+                <span v-else>새로고침 중...</span>
+              </button>
+            </div>
           </div>
 
           <!-- 결과 없음 -->
@@ -682,10 +700,24 @@ onUnmounted(() => {
               </tbody>
             </table>
 
-            <!-- 하단 페이징 네비게이션 (10개씩) -->
+            <!-- 하단 페이징 네비게이션 -->
             <div class="pagination-container">
-              <div class="pagination-info">
-                {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredConsultations.length) }}건 / 총 {{ filteredConsultations.length }}건
+              <div class="pagination-info-group">
+                <div class="pagination-info">
+                  {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredConsultations.length) }}건 / 총 {{ filteredConsultations.length }}건
+                </div>
+                <div class="page-size-selector">
+                  <select
+                    id="pageSizeSelectPagination"
+                    v-model.number="pageSize"
+                    class="form-select page-size-select"
+                    @change="resetPage"
+                  >
+                    <option v-for="size in pageSizeOptions" :key="size" :value="size">
+                      {{ size }}개씩 보기
+                    </option>
+                  </select>
+                </div>
               </div>
 
               <div class="pagination-nav">
@@ -1630,6 +1662,40 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-summary__left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-summary__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.page-size-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.page-size-select {
+  height: 2.125rem !important;
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: 0.375rem !important;
+  background-color: white;
 }
 
 .filter-summary strong {
@@ -1662,6 +1728,12 @@ onUnmounted(() => {
     flex-direction: row;
     justify-content: space-between;
   }
+}
+
+.pagination-info-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .pagination-info {
