@@ -3,6 +3,7 @@ package com.careerlink.backend.dto;
 import java.time.LocalDateTime;
 
 import com.careerlink.backend.domain.Consultation;
+import com.careerlink.backend.domain.ConsultationResult;
 import com.careerlink.backend.domain.ConsultationStatus;
 
 public record ConsultationResponse(
@@ -20,9 +21,16 @@ public record ConsultationResponse(
 	ConsultationStatus status,
 	String counselorName,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	String resultContent,
+	Integer reConsultationNeeded,
+	Integer satisfactionScore
 ) {
 	public static ConsultationResponse from(Consultation consultation) {
+		return from(consultation, null);
+	}
+
+	public static ConsultationResponse from(Consultation consultation, ConsultationResult result) {
 		Long topicId = consultation.getType().getTopic() != null ? consultation.getType().getTopic().getId() : null;
 		String topicName = consultation.getType().getTopic() != null ? consultation.getType().getTopic().getName() : "";
 		return new ConsultationResponse(
@@ -40,7 +48,10 @@ public record ConsultationResponse(
 			consultation.getStatus(),
 			consultation.getCounselorName(),
 			consultation.getCreatedAt(),
-			consultation.getUpdatedAt()
+			consultation.getUpdatedAt(),
+			result != null ? result.getResultContent() : null,
+			result != null ? result.getReConsultationNeeded() : null,
+			result != null ? result.getSatisfactionScore() : null
 		);
 	}
 }

@@ -5,10 +5,10 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,9 +19,12 @@ import com.careerlink.backend.dto.ConsultationTopicResponse;
 import com.careerlink.backend.dto.ConsultationTypeCreateRequest;
 import com.careerlink.backend.dto.ConsultationTypeResponse;
 import com.careerlink.backend.dto.ConsultationTypeUpdateRequest;
+import com.careerlink.backend.dto.StudentSessionResponse;
+import com.careerlink.backend.dto.StudentSessionUpdateRequest;
 import com.careerlink.backend.service.ConsultationService;
 import com.careerlink.backend.service.ConsultationTopicService;
 import com.careerlink.backend.service.ConsultationTypeService;
+import com.careerlink.backend.service.StudentSessionService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -34,15 +37,18 @@ public class AdminController {
 	private final ConsultationTopicService consultationTopicService;
 	private final ConsultationTypeService consultationTypeService;
 	private final ConsultationService consultationService;
+	private final StudentSessionService studentSessionService;
 
 	public AdminController(
 		ConsultationTopicService consultationTopicService,
 		ConsultationTypeService consultationTypeService,
-		ConsultationService consultationService
+		ConsultationService consultationService,
+		StudentSessionService studentSessionService
 	) {
 		this.consultationTopicService = consultationTopicService;
 		this.consultationTypeService = consultationTypeService;
 		this.consultationService = consultationService;
+		this.studentSessionService = studentSessionService;
 	}
 
 	@GetMapping("/topics")
@@ -92,7 +98,32 @@ public class AdminController {
 	public List<ConsultationResponse> getAllConsultations() {
 		return consultationService.getAllConsultations()
 			.stream()
-			.map(ConsultationResponse::from)
+			.map(c -> ConsultationResponse.from(c, consultationService.getConsultationResult(c.getId())))
 			.toList();
+	}
+
+	@GetMapping("/students")
+	public List<StudentSessionResponse> getAllStudents() {
+		return studentSessionService.getAllStudentSessions()
+			.stream()
+			.map(StudentSessionResponse::from)
+			.toList();
+	}
+
+	@PutMapping("/students/{id}")
+	public StudentSessionResponse updateStudent(
+		@PathVariable @Positive(message = "id는 1 이상이어야 합니다.") Long id,
+		@Valid @RequestBody StudentSessionUpdateRequest request
+	) {
+		return StudentSessionResponse.from(
+			studentSessionService.updateStudentSession(
+				id,
+				request.studentName(),
+				request.studentPhone(),
+				request.schoolType(),
+				request.grade(),
+				request.gender()
+			)
+		);
 	}
 }

@@ -1,6 +1,6 @@
 import client from './client'
 import type { CounselorEnterPayload, CounselorSession } from '../types/counselor'
-import type { Consultation } from '../types/consultation'
+import type { Consultation, ConsultationCompletePayload } from '../types/consultation'
 
 /**
  * 상담사 입장
@@ -55,10 +55,15 @@ export const startProgressConsultation = async (id: string): Promise<Consultatio
   return response.data
 }
 
+
+
 /**
- * 상담 완료
+ * 상담 완료 및 결과 등록
  */
-export const completeConsultation = async (id: string): Promise<Consultation> => {
-  const response = await client.patch<Consultation>(`/consultations/${id}/complete`, {})
+export const completeConsultation = async (
+  id: string,
+  payload?: ConsultationCompletePayload,
+): Promise<Consultation> => {
+  const response = await client.patch<Consultation>(`/consultations/${id}/complete`, payload || {})
   return response.data
 }

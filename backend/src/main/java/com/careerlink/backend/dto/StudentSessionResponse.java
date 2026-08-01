@@ -2,15 +2,17 @@ package com.careerlink.backend.dto;
 
 import java.time.LocalDateTime;
 
+import com.careerlink.backend.domain.SchoolType;
 import com.careerlink.backend.domain.StudentSession;
 
 public record StudentSessionResponse(
 	Long id,
 	String studentName,
 	String studentPhone,
-	String schoolType,
+	SchoolType schoolType,
 	Integer grade,
 	Integer gender,
+	LocalDateTime createdAt,
 	LocalDateTime enteredAt
 ) {
 	public static StudentSessionResponse from(StudentSession studentSession) {
@@ -18,9 +20,10 @@ public record StudentSessionResponse(
 			studentSession.getId(),
 			studentSession.getStudentName(),
 			studentSession.getStudentPhone(),
-			studentSession.getSchoolType().name(),
+			studentSession.getSchoolType(),
 			studentSession.getGrade(),
 			studentSession.getGender(),
+			studentSession.getCreatedAt(),
 			studentSession.getEnteredAt()
 		);
 	}

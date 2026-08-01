@@ -1,16 +1,20 @@
 package com.careerlink.backend.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.careerlink.backend.domain.Consultation;
+import com.careerlink.backend.domain.ConsultationResult;
 import com.careerlink.backend.domain.ConsultationStatus;
 import com.careerlink.backend.domain.ConsultationType;
 import com.careerlink.backend.domain.StudentSession;
+import com.careerlink.backend.dto.ConsultationCompleteRequest;
 import com.careerlink.backend.exception.ResourceNotFoundException;
 import com.careerlink.backend.repository.ConsultationRepository;
+import com.careerlink.backend.repository.ConsultationResultRepository;
 import com.careerlink.backend.repository.ConsultationTypeRepository;
 import com.careerlink.backend.repository.StudentSessionRepository;
 
@@ -21,17 +25,20 @@ public class ConsultationService {
 	private final ConsultationRepository consultationRepository;
 	private final ConsultationTypeRepository consultationTypeRepository;
 	private final StudentSessionRepository studentSessionRepository;
+	private final ConsultationResultRepository consultationResultRepository;
 	private final NotificationService notificationService;
 
 	public ConsultationService(
 		ConsultationRepository consultationRepository,
 		ConsultationTypeRepository consultationTypeRepository,
 		StudentSessionRepository studentSessionRepository,
+		ConsultationResultRepository consultationResultRepository,
 		NotificationService notificationService
 	) {
 		this.consultationRepository = consultationRepository;
 		this.consultationTypeRepository = consultationTypeRepository;
 		this.studentSessionRepository = studentSessionRepository;
+		this.consultationResultRepository = consultationResultRepository;
 		this.notificationService = notificationService;
 	}
 
@@ -49,6 +56,10 @@ public class ConsultationService {
 			.orElseThrow(() -> new ResourceNotFoundException("Consultation", id));
 
 		return initializeConsultation(consultation);
+	}
+
+	public ConsultationResult getConsultationResult(Long consultationId) {
+		return consultationResultRepository.findByConsultationId(consultationId).orElse(null);
 	}
 
 	public List<Consultation> findByTypeAndStatus(Long typeId, ConsultationStatus status) {
@@ -119,10 +130,26 @@ public class ConsultationService {
 
 	@Transactional
 	public Consultation complete(Long consultationId) {
+		return complete(consultationId, null);
+	}
+
+	@Transactional
+	public Consultation complete(Long consultationId, ConsultationCompleteRequest request) {
 		Consultation consultation = getConsultation(consultationId);
 		consultation.complete();
+		Consultation saved = consultationRepository.saveAndFlush(consultation);
 
-		return initializeConsultation(consultationRepository.saveAndFlush(consultation));
+		if (request != null && (request.resultContent() != null || request.reConsultationNeeded() != null || request.satisfactionScore() != null)) {
+			ConsultationResult result = new ConsultationResult(
+				saved,
+				request.resultContent() != null ? request.resultContent().trim() : "",
+				request.reConsultationNeeded() != null ? request.reConsultationNeeded() : 2,
+				request.satisfactionScore() != null ? request.satisfactionScore() : 5
+			);
+			consultationResultRepository.saveAndFlush(result);
+		}
+
+		return initializeConsultation(saved);
 	}
 
 	@Transactional
@@ -144,13 +171,11 @@ public class ConsultationService {
 	}
 
 	private Consultation initializeConsultation(Consultation consultation) {
-		consultation.getType().getId();
-		consultation.getType().getName();
-		consultation.getStudentSession().getId();
 		consultation.getStudentSession().getStudentName();
-		consultation.getStudentSession().getStudentPhone();
-		consultation.getStudentSession().getSchoolType();
-		consultation.getStudentSession().getGrade();
+		consultation.getType().getName();
+		if (consultation.getType().getTopic() != null) {
+			consultation.getType().getTopic().getName();
+		}
 		return consultation;
 	}
 }

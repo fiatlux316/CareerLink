@@ -61,6 +61,14 @@ public class StudentSession {
 		this.gender = gender != null ? gender : 0;
 	}
 
+	public void updateInfo(String studentName, String studentPhone, SchoolType schoolType, Integer grade, Integer gender) {
+		this.studentName = studentName;
+		this.studentPhone = studentPhone;
+		this.schoolType = schoolType;
+		this.grade = grade != null ? grade : 0;
+		this.gender = gender != null ? gender : 0;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

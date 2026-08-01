@@ -45,6 +45,15 @@ export interface StudentSession {
   grade: number
   gender: number
   enteredAt: string
+  createdAt?: string
+}
+
+export interface StudentSessionUpdatePayload {
+  studentName: string
+  studentPhone: string
+  schoolType: SchoolType
+  grade: number
+  gender: number
 }
 
 /**
@@ -74,6 +83,15 @@ export interface Consultation {
   counselorName: string | null
   createdAt: string
   updatedAt: string
+  resultContent?: string | null
+  reConsultationNeeded?: number | null
+  satisfactionScore?: number | null
+}
+
+export interface ConsultationCompletePayload {
+  resultContent?: string
+  reConsultationNeeded?: number
+  satisfactionScore?: number
 }
 
 /**

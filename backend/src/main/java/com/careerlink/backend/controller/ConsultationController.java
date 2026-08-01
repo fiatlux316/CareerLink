@@ -8,14 +8,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.careerlink.backend.domain.Consultation;
+import com.careerlink.backend.domain.ConsultationResult;
+import com.careerlink.backend.dto.AcceptRequest;
+import com.careerlink.backend.dto.ConsultationCompleteRequest;
 import com.careerlink.backend.dto.ConsultationCreateRequest;
 import com.careerlink.backend.dto.ConsultationResponse;
-import com.careerlink.backend.dto.AcceptRequest;
 import com.careerlink.backend.service.ConsultationService;
 
 import jakarta.validation.Valid;
@@ -48,14 +51,16 @@ public class ConsultationController {
 
 	@GetMapping("/{id}")
 	public ConsultationResponse getConsultation(@PathVariable Long id) {
-		return ConsultationResponse.from(consultationService.getConsultation(id));
+		Consultation consultation = consultationService.getConsultation(id);
+		ConsultationResult result = consultationService.getConsultationResult(id);
+		return ConsultationResponse.from(consultation, result);
 	}
 
 	@GetMapping
 	public List<ConsultationResponse> getConsultationsByStudentPhone(@RequestParam String studentPhone) {
 		return consultationService.findByStudentPhone(studentPhone)
 			.stream()
-			.map(ConsultationResponse::from)
+			.map(c -> ConsultationResponse.from(c, consultationService.getConsultationResult(c.getId())))
 			.toList();
 	}
 
@@ -78,8 +83,13 @@ public class ConsultationController {
 	}
 
 	@PatchMapping("/{id}/complete")
-	public ConsultationResponse completeConsultation(@PathVariable Long id) {
-		return ConsultationResponse.from(consultationService.complete(id));
+	public ConsultationResponse completeConsultation(
+		@PathVariable Long id,
+		@Valid @RequestBody(required = false) ConsultationCompleteRequest request
+	) {
+		Consultation consultation = consultationService.complete(id, request);
+		ConsultationResult result = consultationService.getConsultationResult(id);
+		return ConsultationResponse.from(consultation, result);
 	}
 
 	@PatchMapping("/{id}/cancel")

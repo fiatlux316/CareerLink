@@ -1,5 +1,8 @@
 package com.careerlink.backend.service;
 
+import java.util.List;
+
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,5 +37,16 @@ public class StudentSessionService {
 	public StudentSession getStudentSession(Long id) {
 		return studentSessionRepository.findById(id)
 			.orElseThrow(() -> new ResourceNotFoundException("StudentSession", id));
+	}
+
+	public List<StudentSession> getAllStudentSessions() {
+		return studentSessionRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+	}
+
+	@Transactional
+	public StudentSession updateStudentSession(Long id, String studentName, String studentPhone, SchoolType schoolType, Integer grade, Integer gender) {
+		StudentSession studentSession = getStudentSession(id);
+		studentSession.updateInfo(studentName, studentPhone, schoolType, grade, gender);
+		return studentSessionRepository.save(studentSession);
 	}
 }

@@ -182,21 +182,56 @@ const handleStartProgress = async () => {
   }
 }
 
-// 상담 완료 처리
-const handleComplete = async () => {
+// 상담 완료 결과 등록 모달 상태
+const isResultModalOpen = ref(false)
+const isSubmittingResult = ref(false)
+const resultErrorMessage = ref('')
+
+const completeFormData = ref({
+  resultContent: '',
+  reConsultationNeeded: 2, // 1: 필요, 2: 불필요
+  satisfactionScore: 5,   // 1~5점
+})
+
+const openResultModal = () => {
+  completeFormData.value = {
+    resultContent: '',
+    reConsultationNeeded: 2,
+    satisfactionScore: 5,
+  }
+  resultErrorMessage.value = ''
+  isResultModalOpen.value = true
+}
+
+const closeResultModal = () => {
+  isResultModalOpen.value = false
+  resultErrorMessage.value = ''
+}
+
+const submitCompleteResult = async () => {
   if (!consultation.value) return
 
-  isProcessing.value = true
-  actionErrorMessage.value = ''
+  if (!completeFormData.value.resultContent.trim()) {
+    resultErrorMessage.value = '상담 결과 및 조언 내용을 입력해주세요 (최대 100자)'
+    return
+  }
+
+  isSubmittingResult.value = true
+  resultErrorMessage.value = ''
 
   try {
-    await completeConsultation(consultation.value.id)
+    await completeConsultation(consultation.value.id, {
+      resultContent: completeFormData.value.resultContent.trim(),
+      reConsultationNeeded: completeFormData.value.reConsultationNeeded,
+      satisfactionScore: completeFormData.value.satisfactionScore,
+    })
+    closeResultModal()
     await fetchConsultation(false)
-  } catch (error: unknown) {
-    const err = error as any
-    actionErrorMessage.value = err?.response?.data?.message || '상담 완료 처리 중 오류가 발생했습니다'
+  } catch (error: any) {
+    console.error('Failed to complete consultation:', error)
+    resultErrorMessage.value = error?.response?.data?.message || '상담 완료 처리 중 오류가 발생했습니다.'
   } finally {
-    isProcessing.value = false
+    isSubmittingResult.value = false
   }
 }
 
@@ -413,20 +448,44 @@ onUnmounted(() => {
           <template v-else-if="consultation.status === 'IN_PROGRESS'">
             <button
               class="btn btn-primary btn-large"
-              @click="handleComplete"
+              @click="openResultModal"
               :disabled="isProcessing"
             >
-              <span v-if="!isProcessing">상담 완료 처리</span>
-              <span v-else>완료 처리 중...</span>
+              <span>상담 완료 및 결과 등록</span>
             </button>
-            <p class="action-desc">상담을 최종 완료 처리합니다.</p>
+            <p class="action-desc">상담 결과 및 만족도 점수를 등록하고 최종 완료 처리합니다.</p>
           </template>
 
-          <!-- COMPLETED 상태: 완료 메시지 -->
-          <div v-else-if="consultation.status === 'COMPLETED'" class="status-message completed">
-            <span class="icon">✓</span>
-            <span>상담이 성공적으로 완료되었습니다</span>
-          </div>
+          <!-- COMPLETED 상태: 완료 메시지 및 상담 결과 요약 -->
+          <template v-else-if="consultation.status === 'COMPLETED'">
+            <div class="status-message completed">
+              <span class="icon">✓</span>
+              <span>상담이 성공적으로 완료되었습니다</span>
+            </div>
+
+            <div v-if="consultation.resultContent || consultation.satisfactionScore" class="completed-result-card">
+              <h4 class="result-card-title">등록된 상담 결과</h4>
+              <div class="result-row">
+                <span class="result-label">상담 결과 요약:</span>
+                <div class="result-text-box">{{ consultation.resultContent || '등록된 결과 내용이 없습니다.' }}</div>
+              </div>
+              <div class="result-row-flex">
+                <div class="meta-item">
+                  <span class="result-label">재상담 필요 여부:</span>
+                  <span class="badge-tag" :class="consultation.reConsultationNeeded === 1 ? 'badge-warn' : 'badge-info'">
+                    {{ consultation.reConsultationNeeded === 1 ? '1. 재상담 필요' : '2. 재상담 불필요' }}
+                  </span>
+                </div>
+                <div class="meta-item">
+                  <span class="result-label">만족도 점수:</span>
+                  <span class="star-rating-display">
+                    <span class="stars-yellow">{{ '★'.repeat(consultation.satisfactionScore || 0) }}{{ '☆'.repeat(5 - (consultation.satisfactionScore || 0)) }}</span>
+                    <strong class="score-text">{{ consultation.satisfactionScore }}점</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </template>
 
           <!-- CANCELLED 상태: 취소 메시지 -->
           <div v-else-if="consultation.status === 'CANCELLED'" class="status-message cancelled">
@@ -439,6 +498,89 @@ onUnmounted(() => {
         <button class="btn btn-secondary btn-large btn-bottom" @click="handleBack">
           접수 현황 목록으로 돌아가기
         </button>
+      </div>
+    </div>
+
+    <!-- 상담 결과 등록 모달 -->
+    <div v-if="isResultModalOpen && consultation" class="modal-backdrop" @click.self="closeResultModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">상담 결과 등록 및 완료</h3>
+          <button type="button" class="btn-close" @click="closeResultModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="target-info-box">
+            <span class="info-label">학생 이름:</span>
+            <strong>{{ consultation.studentName }}</strong>
+            <span class="info-divider">|</span>
+            <span class="info-label">상담 유형:</span>
+            <span>{{ consultation.typeName }}</span>
+          </div>
+
+          <!-- 상담 결과 텍스트 (100자 이내) -->
+          <div class="form-group">
+            <div class="label-with-counter">
+              <label for="resultContentInputDetail" class="form-label">상담 결과 요약 <span class="required">*</span></label>
+              <span class="char-counter" :class="{ 'char-counter--limit': completeFormData.resultContent.length >= 100 }">
+                {{ completeFormData.resultContent.length }} / 100자
+              </span>
+            </div>
+            <textarea
+              id="resultContentInputDetail"
+              v-model="completeFormData.resultContent"
+              class="form-textarea"
+              maxlength="100"
+              rows="3"
+              placeholder="상담 결과 및 조언 내용을 입력하세요 (최대 100자)"
+            ></textarea>
+          </div>
+
+          <!-- 재상담 필요 여부 -->
+          <div class="form-group">
+            <label class="form-label">재상담 필요 여부 <span class="required">*</span></label>
+            <div class="radio-segmented">
+              <label class="segmented-option" :class="{ active: completeFormData.reConsultationNeeded === 1 }">
+                <input type="radio" v-model.number="completeFormData.reConsultationNeeded" :value="1" hidden />
+                <span>1. 재상담 필요</span>
+              </label>
+              <label class="segmented-option" :class="{ active: completeFormData.reConsultationNeeded === 2 }">
+                <input type="radio" v-model.number="completeFormData.reConsultationNeeded" :value="2" hidden />
+                <span>2. 재상담 불필요</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 만족도 점수 (별표 5개) -->
+          <div class="form-group">
+            <label class="form-label">학생 만족도 점수 <span class="required">*</span></label>
+            <div class="star-rating">
+              <span
+                v-for="star in 5"
+                :key="star"
+                class="star-icon"
+                :class="{ active: star <= completeFormData.satisfactionScore }"
+                @click="completeFormData.satisfactionScore = star"
+              >
+                ★
+              </span>
+              <span class="star-score-text">{{ completeFormData.satisfactionScore }}점</span>
+            </div>
+          </div>
+
+          <div v-if="resultErrorMessage" class="form-error-alert">
+            {{ resultErrorMessage }}
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeResultModal" :disabled="isSubmittingResult">
+            취소
+          </button>
+          <button type="button" class="btn btn-primary" @click="submitCompleteResult" :disabled="isSubmittingResult">
+            <span v-if="!isSubmittingResult">상담 완료 저장</span>
+            <span v-else>저장 중...</span>
+          </button>
+        </div>
       </div>
     </div>
   </article>
@@ -784,5 +926,284 @@ onUnmounted(() => {
 
 .btn-bottom {
   margin-top: 1rem;
+}
+
+/* 상담 결과 모달 및 결과 카드 스타일 */
+.completed-result-card {
+  margin-top: 1rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.result-card-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.375rem;
+}
+
+.result-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.result-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.result-text-box {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #0f172a;
+  white-space: pre-wrap;
+}
+
+.result-row-flex {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge-tag {
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.badge-warn {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.star-rating-display {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.stars-yellow {
+  color: #f59e0b;
+  font-size: 1.125rem;
+  letter-spacing: 0.1em;
+}
+
+.score-text {
+  color: #b45309;
+  font-size: 0.9375rem;
+}
+
+/* 모달 스타일 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-card {
+  background: white;
+  width: 100%;
+  max-width: 32rem;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.btn-close {
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+}
+
+.btn-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.target-info-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.info-divider {
+  color: #93c5fd;
+}
+
+.label-with-counter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.375rem;
+}
+
+.char-counter {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.char-counter--limit {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.radio-segmented {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.segmented-option {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+}
+
+.segmented-option:hover {
+  background: #f1f5f9;
+}
+
+.segmented-option.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.star-icon {
+  font-size: 1.75rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.star-icon:hover,
+.star-icon.active {
+  color: #f59e0b;
+  transform: scale(1.15);
+}
+
+.star-score-text {
+  margin-left: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.form-error-alert {
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background: #f8fafc;
 }
 </style>

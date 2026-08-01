@@ -1,5 +1,5 @@
 import client from './client'
-import type { ConsultationType, ConsultationTopic, Consultation } from '../types/consultation'
+import type { ConsultationType, ConsultationTopic, Consultation, StudentSession, StudentSessionUpdatePayload } from '../types/consultation'
 
 /**
  * 상담 테마 목록 조회 (관리자용 1depth)
@@ -45,4 +45,23 @@ export const updateAdminType = async (
 
 export const deleteAdminType = async (id: number): Promise<void> => {
   await client.delete(`/admin/types/${id}`)
+}
+
+/**
+ * 학생 세션 목록 조회 (관리자용)
+ */
+export const getAdminStudents = async (): Promise<StudentSession[]> => {
+  const response = await client.get<StudentSession[]>('/admin/students')
+  return response.data
+}
+
+/**
+ * 학생 정보 수정 (관리자용)
+ */
+export const updateAdminStudent = async (
+  id: number,
+  payload: StudentSessionUpdatePayload
+): Promise<StudentSession> => {
+  const response = await client.put<StudentSession>(`/admin/students/${id}`, payload)
+  return response.data
 }
