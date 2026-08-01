@@ -20,3 +20,4 @@ backend/data/
 *.log
 
 *.tar
+postgres-data

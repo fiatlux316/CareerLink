@@ -17,7 +17,8 @@ services:
       retries: 10
       start_period: 5s
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql/data
+      #- /Users/jck/WORK/DEV/volume/postgres-data:/var/lib/postgresql/data
 
   backend:
     build:

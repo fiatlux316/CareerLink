@@ -12,12 +12,8 @@ spring:
       max-lifetime: ${SPRING_DATASOURCE_HIKARI_MAX_LIFETIME:1800000}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
-  sql:
-    init:
-      mode: always
 
 careerlink:
   privacy:
